@@ -1,0 +1,24 @@
+import { cn } from "@/lib/utils";
+
+interface ServerIconProps {
+  className?: string;
+}
+
+export default function ServerIcon({ className }: ServerIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("size-5", className)}
+    >
+      <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+      <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+      <line x1="6" x2="6.01" y1="6" y2="6"/>
+      <line x1="6" x2="6.01" y1="18" y2="18"/>
+    </svg>
+  );
+}
