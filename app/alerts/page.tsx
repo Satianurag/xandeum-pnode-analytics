@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { 
-  getAlertConfigs, 
-  saveAlertConfigs, 
+import {
+  getAlertConfigs,
+  saveAlertConfigs,
   getAlertHistory,
   createAlertConfig,
   deleteAlertConfig,
@@ -17,8 +17,8 @@ import type { AlertConfig, Alert } from '@/types/pnode';
 
 const BellIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
   </svg>
 );
 
@@ -27,6 +27,12 @@ export default function AlertsPage() {
   const [history, setHistory] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'configs' | 'history'>('configs');
+
+  // Webhook testing state
+  const [webhookType, setWebhookType] = useState<'discord' | 'slack' | 'telegram'>('discord');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [webhookResult, setWebhookResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     setConfigs(getAlertConfigs());
@@ -53,6 +59,32 @@ export default function AlertsPage() {
   const handleClearHistory = () => {
     clearAlertHistory();
     setHistory([]);
+  };
+
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    setWebhookResult(null);
+
+    try {
+      const response = await fetch('/api/webhooks/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: webhookType,
+          webhookUrl: webhookUrl,
+        }),
+      });
+
+      const data = await response.json();
+      setWebhookResult(data);
+    } catch (error) {
+      setWebhookResult({
+        success: false,
+        message: 'Failed to send test webhook. Please check your connection.',
+      });
+    } finally {
+      setTestingWebhook(false);
+    }
   };
 
   const severityColors = {
@@ -90,21 +122,19 @@ export default function AlertsPage() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setActiveTab('configs')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'configs' 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-accent/20 hover:bg-accent/40'
-          }`}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'configs'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-accent/20 hover:bg-accent/40'
+            }`}
         >
           Alert Rules
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'history' 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-accent/20 hover:bg-accent/40'
-          }`}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'history'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-accent/20 hover:bg-accent/40'
+            }`}
         >
           History ({history.filter(a => !a.acknowledged).length})
         </button>
@@ -117,7 +147,7 @@ export default function AlertsPage() {
           </div>
 
           {configs.map((config) => (
-            <div 
+            <div
               key={config.id}
               className="rounded-lg border-2 border-border p-4"
             >
@@ -144,7 +174,7 @@ export default function AlertsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Switch 
+                  <Switch
                     checked={config.enabled}
                     onCheckedChange={(checked) => handleToggleConfig(config.id, checked)}
                   />
@@ -159,13 +189,58 @@ export default function AlertsPage() {
             </div>
           ))}
 
-          <div className="rounded-lg border-2 border-dashed border-border p-6 text-center">
-            <p className="text-muted-foreground mb-2">Configure webhook endpoints for external notifications</p>
-            <div className="flex flex-wrap justify-center gap-2">
+          {/* Webhook Testing Section */}
+          <div className="rounded-lg border-2 border-border p-4">
+            <h3 className="font-display text-lg mb-4">Test Webhook Integration</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter your webhook URL below and send a test message to verify the connection.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <select
+                  value={webhookType}
+                  onChange={(e) => setWebhookType(e.target.value as 'discord' | 'slack' | 'telegram')}
+                  className="px-3 py-2 rounded-lg bg-accent/20 border border-border text-sm"
+                >
+                  <option value="discord">Discord</option>
+                  <option value="slack">Slack</option>
+                  <option value="telegram">Telegram</option>
+                </select>
+                <input
+                  type="url"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder={
+                    webhookType === 'telegram'
+                      ? 'Bot Token:Chat ID (e.g., 123456:789)'
+                      : 'Enter webhook URL...'
+                  }
+                  className="flex-1 px-3 py-2 rounded-lg bg-accent/20 border border-border text-sm font-mono"
+                />
+                <button
+                  onClick={handleTestWebhook}
+                  disabled={testingWebhook || !webhookUrl}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm disabled:opacity-50"
+                >
+                  {testingWebhook ? 'Sending...' : 'Test'}
+                </button>
+              </div>
+
+              {webhookResult && (
+                <div className={`text-sm p-3 rounded-lg ${webhookResult.success
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-red-500/20 text-red-400'
+                  }`}>
+                  {webhookResult.message}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
               <span className="px-3 py-1 rounded bg-[#5865F2]/20 text-[#5865F2] text-sm">Discord</span>
               <span className="px-3 py-1 rounded bg-[#0088cc]/20 text-[#0088cc] text-sm">Telegram</span>
               <span className="px-3 py-1 rounded bg-[#4A154B]/20 text-[#E01E5A] text-sm">Slack</span>
-              <span className="px-3 py-1 rounded bg-accent/20 text-muted-foreground text-sm">Webhook</span>
             </div>
           </div>
         </div>
@@ -195,13 +270,12 @@ export default function AlertsPage() {
             </div>
           ) : (
             history.map((alert) => (
-              <div 
+              <div
                 key={alert.id}
-                className={`rounded-lg border-2 p-4 ${
-                  alert.acknowledged 
-                    ? 'border-border opacity-60' 
-                    : `border-l-4 ${severityColors[alert.severity].split(' ')[0]} border-border`
-                }`}
+                className={`rounded-lg border-2 p-4 ${alert.acknowledged
+                  ? 'border-border opacity-60'
+                  : `border-l-4 ${severityColors[alert.severity].split(' ')[0]} border-border`
+                  }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

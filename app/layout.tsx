@@ -69,6 +69,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        {/* PWA Meta Tags */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#8b5cf6" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="pNode Analytics" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+
+        {/* Font preloads */}
         <link
           rel="preload"
           href="/fonts/Rebels-Fett.woff2"

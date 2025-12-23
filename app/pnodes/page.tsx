@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import ServerIcon from "@/components/icons/server";
 import { usePNodes } from "@/hooks/use-pnode-data";
 import { NodeSearch } from "@/components/dashboard/node-search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ExportButton } from "@/components/dashboard/export-button";
+import { exportPNodes, type ExportFormat } from "@/lib/export-utils";
+import { CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Minus, ExternalLink } from "lucide-react";
 import type { PNode } from "@/types/pnode";
 
 function LoadingState() {
@@ -70,9 +73,13 @@ function NodeCard({ node, isSelected, onToggle }: { node: PNode; isSelected: boo
             className="rounded border-border"
             aria-label={`Select node ${node.pubkey.slice(0, 8)}`}
           />
-          <div className="font-mono text-sm truncate max-w-[180px]" title={node.pubkey}>
+          <Link
+            href={`/pnodes/${node.pubkey}`}
+            className="font-mono text-sm truncate max-w-[180px] hover:text-primary transition-colors"
+            title={node.pubkey}
+          >
             {node.pubkey.slice(0, 12)}...
-          </div>
+          </Link>
         </div>
         <StatusBadge status={node.status} />
       </div>
@@ -156,6 +163,11 @@ export default function PNodesPage() {
 
   const comparedNodes = nodes?.filter(n => selectedNodes.includes(n.id)) || [];
 
+  const handleExport = (format: ExportFormat) => {
+    const dataToExport = displayNodes.length > 0 ? displayNodes : (nodes || []);
+    exportPNodes(dataToExport, format);
+  };
+
   return (
     <DashboardPageLayout
       header={{
@@ -164,12 +176,19 @@ export default function PNodesPage() {
         icon: ServerIcon,
       }}
     >
-      {nodes && (
-        <NodeSearch
-          nodes={nodes}
-          onFilterChange={setFilteredNodes}
+      <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+        {nodes && (
+          <NodeSearch
+            nodes={nodes}
+            onFilterChange={setFilteredNodes}
+          />
+        )}
+        <ExportButton
+          onExport={handleExport}
+          disabled={!nodes || nodes.length === 0}
+          label="Export Data"
         />
-      )}
+      </div>
 
       {comparedNodes.length >= 2 && (
         <div className="rounded-lg border-2 border-primary/50 p-4 bg-primary/5">
@@ -300,9 +319,14 @@ export default function PNodesPage() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs truncate max-w-[150px]" title={node.pubkey}>
-                      {node.pubkey.slice(0, 12)}...
-                    </div>
+                    <Link
+                      href={`/pnodes/${node.pubkey}`}
+                      className="font-mono text-xs truncate max-w-[150px] hover:text-primary transition-colors flex items-center gap-1 group"
+                      title={node.pubkey}
+                    >
+                      <span>{node.pubkey.slice(0, 12)}...</span>
+                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={node.status} />

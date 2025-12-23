@@ -5,6 +5,9 @@ import DashboardPageLayout from "@/components/dashboard/layout";
 import ChartIcon from "@/components/icons/chart";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useTrendData } from "@/hooks/use-pnode-data";
 import { NetworkChart } from "@/components/dashboard/network-chart";
+import { ExportButton } from "@/components/dashboard/export-button";
+import { InfoTooltip } from "@/components/dashboard/info-tooltip";
+import { exportPerformanceHistory, type ExportFormat } from "@/lib/export-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResponsiveContainer,
@@ -87,28 +90,41 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-2">
-        {(['24h', '7d', '30d'] as const).map(p => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`px-3 py-1 text-xs rounded ${period === p ? 'bg-primary text-primary-foreground' : 'bg-accent hover:bg-accent/80'}`}
-          >
-            {p}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-4 mb-2">
+        <div className="flex gap-2">
+          {(['24h', '7d', '30d'] as const).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1 text-xs rounded ${period === p ? 'bg-primary text-primary-foreground' : 'bg-accent hover:bg-accent/80'}`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        <ExportButton
+          onExport={(format: ExportFormat) => {
+            if (history) {
+              exportPerformanceHistory(history, format, `xandeum-analytics-${period}`);
+            }
+          }}
+          disabled={!history || history.length === 0}
+          label="Export Data"
+        />
       </div>
 
       <div className="rounded-lg border-2 border-border overflow-hidden">
-        <div className="px-4 py-2 border-b border-border bg-accent/20">
-          <span className="text-xs text-muted-foreground uppercase tracking-wider">
+        <div className="px-4 py-2 border-b border-border bg-accent/20 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Network Metrics ({period})
+            <InfoTooltip content="Historical network performance data showing response times, node counts, storage usage, and gossip activity over the selected time period." />
           </span>
         </div>
         <div className="p-4">
           {history && <NetworkChart data={history} />}
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-lg border-2 border-border overflow-hidden">
@@ -122,13 +138,13 @@ export default function AnalyticsPage() {
               <AreaChart data={storageChartData}>
                 <defs>
                   <linearGradient id="storageGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis 
-                  dataKey="time" 
+                <XAxis
+                  dataKey="time"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 />
                 <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
@@ -140,10 +156,10 @@ export default function AnalyticsPage() {
                     fontSize: '12px',
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="storage" 
-                  stroke="hsl(var(--primary))" 
+                <Area
+                  type="monotone"
+                  dataKey="storage"
+                  stroke="hsl(var(--primary))"
                   fill="url(#storageGradient)"
                   strokeWidth={2}
                 />
@@ -163,13 +179,13 @@ export default function AnalyticsPage() {
               <AreaChart data={nodeGrowthData}>
                 <defs>
                   <linearGradient id="nodesGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis 
-                  dataKey="period" 
+                <XAxis
+                  dataKey="period"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 />
                 <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
@@ -181,10 +197,10 @@ export default function AnalyticsPage() {
                     fontSize: '12px',
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="nodes" 
-                  stroke="#22c55e" 
+                <Area
+                  type="monotone"
+                  dataKey="nodes"
+                  stroke="#22c55e"
                   fill="url(#nodesGradient)"
                   strokeWidth={2}
                 />

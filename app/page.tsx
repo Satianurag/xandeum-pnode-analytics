@@ -6,6 +6,7 @@ import BracketsIcon from "@/components/icons/brackets";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useGossipEvents, useXScore } from "@/hooks/use-pnode-data";
 import { NetworkStatsGrid } from "@/components/dashboard/network-stats";
 import { NetworkChart } from "@/components/dashboard/network-chart";
+import { InfoTooltip } from "@/components/dashboard/info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Globe3D = lazy(() => import("@/components/dashboard/globe-3d").then(mod => ({ default: mod.Globe3D })));
@@ -64,37 +65,53 @@ export default function DashboardOverview() {
       {xScore && (
         <div className="rounded-lg border-2 border-border p-4">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               Network X-Score
+              <InfoTooltip content="A composite score (0-100) representing overall network health, calculated from throughput, latency, uptime, and gossip health. Grade: S (95+), A (85+), B (70+), C (50+), D (30+), F (<30)." />
             </span>
             <span className={`text-2xl font-display ${xScore.grade === 'S' ? 'text-yellow-400' :
-                xScore.grade === 'A' ? 'text-green-400' :
-                  xScore.grade === 'B' ? 'text-blue-400' :
-                    xScore.grade === 'C' ? 'text-orange-400' :
-                      'text-red-400'
+              xScore.grade === 'A' ? 'text-green-400' :
+                xScore.grade === 'B' ? 'text-blue-400' :
+                  xScore.grade === 'C' ? 'text-orange-400' :
+                    'text-red-400'
               }`}>
               {xScore.grade}
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase">Overall</div>
+              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                Overall
+                <InfoTooltip content="Weighted average score combining all network performance metrics." />
+              </div>
               <div className="text-xl font-display text-primary">{xScore.overall.toFixed(1)}</div>
             </div>
             <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase">Throughput</div>
+              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                Throughput
+                <InfoTooltip content="Measures data read/write efficiency. Higher throughput = better performance for storage operations." />
+              </div>
               <div className="text-xl font-display text-cyan-400">{xScore.storageThroughput.toFixed(1)}</div>
             </div>
             <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase">Latency</div>
+              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                Latency
+                <InfoTooltip content="Time to make stored data available for retrieval. Lower latency scores higher." />
+              </div>
               <div className="text-xl font-display text-green-400">{xScore.dataAvailabilityLatency.toFixed(1)}</div>
             </div>
             <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase">Uptime</div>
+              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                Uptime
+                <InfoTooltip content="Percentage of time nodes have been online and responsive. Target: 99.9%+" />
+              </div>
               <div className="text-xl font-display text-blue-400">{xScore.uptime.toFixed(1)}</div>
             </div>
             <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase">Gossip</div>
+              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                Gossip
+                <InfoTooltip content="Measures gossip protocol health including peer discovery, message propagation, and network sync." />
+              </div>
               <div className="text-xl font-display text-purple-400">{xScore.gossipHealth.toFixed(1)}</div>
             </div>
           </div>
@@ -154,8 +171,8 @@ export default function DashboardOverview() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg font-display text-primary">#{index + 1}</span>
                     <span className={`text-xs px-2 py-0.5 rounded ${node.performance.tier === 'excellent' ? 'bg-green-500/20 text-green-400' :
-                        node.performance.tier === 'good' ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-yellow-500/20 text-yellow-400'
+                      node.performance.tier === 'good' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-yellow-500/20 text-yellow-400'
                       }`}>
                       {node.performance.tier.toUpperCase()}
                     </span>
