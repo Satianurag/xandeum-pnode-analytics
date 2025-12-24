@@ -9,7 +9,7 @@ import { NetworkChart } from "@/components/dashboard/network-chart";
 import { InfoTooltip } from "@/components/dashboard/info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const Globe3D = lazy(() => import("@/components/dashboard/globe-3d").then(mod => ({ default: mod.Globe3D })));
+import { LeafletMap } from "@/components/dashboard/leaflet-map";
 
 function LoadingState() {
   return (
@@ -121,21 +121,14 @@ export default function DashboardOverview() {
       <div className="rounded-lg border-2 border-border overflow-hidden">
         <div className="px-4 py-2 border-b border-border bg-accent/20 flex items-center justify-between">
           <span className="text-xs text-muted-foreground uppercase tracking-wider">
-            3D Network Globe
+            Network Map
           </span>
           <span className="text-xs text-primary">
             {nodes?.filter(n => n.status === 'online').length || 0} nodes online
           </span>
         </div>
         <div className="h-[400px]">
-          <Suspense fallback={
-            <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-              <Skeleton className="w-32 h-32 rounded-full animate-pulse" />
-              <span className="text-sm text-muted-foreground">Loading 3D Globe...</span>
-            </div>
-          }>
-            {nodes && <Globe3D nodes={nodes} gossipEvents={gossipEvents || undefined} />}
-          </Suspense>
+          {nodes && <LeafletMap nodes={nodes} />}
         </div>
       </div>
 
