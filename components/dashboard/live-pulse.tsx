@@ -5,20 +5,21 @@ import { useGossipEvents } from '@/hooks/use-pnode-data-query';
 import type { GossipEvent } from '@/types/pnode';
 import { cn } from '@/lib/utils';
 
+// Muted, subtle colors matching reference aesthetic
 const eventTypeColors: Record<GossipEvent['type'], string> = {
-  discovery: 'text-green-400',
-  message: 'text-blue-400',
-  sync: 'text-purple-400',
-  heartbeat: 'text-yellow-400',
-  data_transfer: 'text-cyan-400',
+  discovery: 'text-muted-foreground',
+  message: 'text-muted-foreground',
+  sync: 'text-muted-foreground',
+  heartbeat: 'text-muted-foreground',
+  data_transfer: 'text-muted-foreground',
 };
 
 const eventTypeLabels: Record<GossipEvent['type'], string> = {
-  discovery: 'DISCOVERY',
-  message: 'MESSAGE',
+  discovery: 'DISC',
+  message: 'MSG',
   sync: 'SYNC',
-  heartbeat: 'HEARTBEAT',
-  data_transfer: 'TRANSFER',
+  heartbeat: 'HB',
+  data_transfer: 'TX',
 };
 
 interface PulseEventProps {
@@ -26,27 +27,14 @@ interface PulseEventProps {
 }
 
 function PulseEvent({ event }: PulseEventProps) {
-  const sourceId = event.sourceNodeId.replace('pnode_', '');
-  const targetId = event.targetNodeId.replace('pnode_', '');
+  const sourceId = event.sourceNodeId.replace('pnode_', '').slice(0, 4);
+  const targetId = event.targetNodeId.replace('pnode_', '').slice(0, 4);
 
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap px-3">
-      <span className={cn('text-xs font-mono', eventTypeColors[event.type])}>
-        [{eventTypeLabels[event.type]}]
-      </span>
-      <span className="text-xs text-muted-foreground">
-        pNode_{sourceId} → pNode_{targetId}
-      </span>
-      {event.metadata?.bytesTransferred && (
-        <span className="text-xs text-primary/70">
-          {(event.metadata.bytesTransferred / 1024).toFixed(1)}KB
-        </span>
-      )}
-      {event.metadata?.latencyMs && (
-        <span className="text-xs text-muted-foreground">
-          {event.metadata.latencyMs}ms
-        </span>
-      )}
+    <span className="inline-flex items-center gap-1 whitespace-nowrap px-2 text-xs text-muted-foreground/70">
+      <span className="font-mono opacity-50">{eventTypeLabels[event.type]}</span>
+      <span className="opacity-40">•</span>
+      <span className="font-mono">{sourceId}→{targetId}</span>
     </span>
   );
 }
@@ -54,7 +42,6 @@ function PulseEvent({ event }: PulseEventProps) {
 export function LiveNetworkPulse() {
   const { data: events } = useGossipEvents();
   const [displayEvents, setDisplayEvents] = useState<GossipEvent[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
@@ -68,29 +55,26 @@ export function LiveNetworkPulse() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 h-8 bg-background/95 border-t border-border backdrop-blur-sm z-50"
+      className="fixed bottom-0 left-0 right-0 h-6 bg-background/80 border-t border-border/30 backdrop-blur-sm z-50"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="h-full flex items-center">
-        <div className="flex-shrink-0 px-3 border-r border-border h-full flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs font-display text-primary uppercase tracking-wider">
-            LIVE PULSE
+        <div className="flex-shrink-0 px-2 h-full flex items-center gap-1.5 border-r border-border/30">
+          <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" />
+          <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+            GOSSIP
           </span>
         </div>
 
-        <div
-          ref={containerRef}
-          className="flex-1 overflow-hidden relative"
-        >
+        <div className="flex-1 overflow-hidden">
           <div
             className={cn(
               "flex items-center h-full",
               !isPaused && "animate-marquee"
             )}
             style={{
-              animationDuration: '30s',
+              animationDuration: '40s',
               animationIterationCount: 'infinite',
               animationTimingFunction: 'linear',
             }}
@@ -99,16 +83,16 @@ export function LiveNetworkPulse() {
               <PulseEvent key={`${event.id}_${idx}`} event={event} />
             ))}
             {displayEvents.length === 0 && (
-              <span className="text-xs text-muted-foreground px-3">
-                Waiting for gossip events...
+              <span className="text-[10px] text-muted-foreground/40 px-2">
+                ...
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex-shrink-0 px-3 border-l border-border h-full flex items-center">
-          <span className="text-xs text-muted-foreground">
-            {displayEvents.length} events
+        <div className="flex-shrink-0 px-2 h-full flex items-center border-l border-border/30">
+          <span className="text-[10px] text-muted-foreground/40">
+            {displayEvents.length}
           </span>
         </div>
       </div>

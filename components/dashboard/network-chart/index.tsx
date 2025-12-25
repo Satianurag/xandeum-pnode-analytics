@@ -1,125 +1,229 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import * as React from "react";
+import { XAxis, YAxis, CartesianGrid, Area, AreaChart } from "recharts";
+
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import type { PerformanceHistory } from '@/types/pnode';
-import { cn } from '@/lib/utils';
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bullet } from "@/components/ui/bullet";
+import type { PerformanceHistory } from "@/types/pnode";
+
+type TimePeriod = "1h" | "6h" | "24h";
+
+const chartConfig = {
+  nodes: {
+    label: "Nodes",
+    color: "var(--chart-1)",
+  },
+  latency: {
+    label: "Latency",
+    color: "var(--chart-2)",
+  },
+  storage: {
+    label: "Storage",
+    color: "var(--chart-3)",
+  },
+} satisfies ChartConfig;
 
 interface NetworkChartProps {
   data: PerformanceHistory[];
 }
 
-type MetricType = 'nodes' | 'latency' | 'storage' | 'gossip';
-
 export function NetworkChart({ data }: NetworkChartProps) {
-  const [activeMetric, setActiveMetric] = useState<MetricType>('nodes');
+  const [activeTab, setActiveTab] = React.useState<TimePeriod>("24h");
 
-  const metrics: { key: MetricType; label: string; color: string }[] = [
-    { key: 'nodes', label: 'NODES', color: '#22c55e' },
-    { key: 'latency', label: 'LATENCY', color: '#f59e0b' },
-    { key: 'storage', label: 'STORAGE', color: '#3b82f6' },
-    { key: 'gossip', label: 'GOSSIP', color: '#a855f7' },
-  ];
-
-  const chartData = data.map((item) => ({
-    time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    nodes: item.onlineNodes,
-    latency: item.avgResponseTime,
-    storage: item.storageUsedTB,
-    gossip: item.gossipMessages / 1000,
-  }));
-
-  const activeMetricConfig = metrics.find(m => m.key === activeMetric)!;
-
-  const formatValue = (value: number) => {
-    switch (activeMetric) {
-      case 'nodes': return `${value} nodes`;
-      case 'latency': return `${value.toFixed(0)}ms`;
-      case 'storage': return `${value.toFixed(1)} TB`;
-      case 'gossip': return `${value.toFixed(0)}K msgs`;
+  const handleTabChange = (value: string) => {
+    if (value === "1h" || value === "6h" || value === "24h") {
+      setActiveTab(value as TimePeriod);
     }
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        {metrics.map((metric) => (
-          <button
-            key={metric.key}
-            onClick={() => setActiveMetric(metric.key)}
-            className={cn(
-              'px-3 py-1.5 text-xs uppercase tracking-wider rounded transition-all',
-              activeMetric === metric.key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-accent hover:bg-accent/80 text-muted-foreground'
-            )}
-          >
-            <span className="flex items-center gap-1.5">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: metric.color }}
-              />
-              {metric.label}
-            </span>
-          </button>
-        ))}
-      </div>
+  // Filter data based on time period
+  const getFilteredData = (period: TimePeriod) => {
+    const now = Date.now();
+    const hours = period === "1h" ? 1 : period === "6h" ? 6 : 24;
+    const cutoff = now - hours * 60 * 60 * 1000;
 
-      <div
-        className="h-[250px] w-full min-h-[250px]"
-        role="img"
-        aria-label={`${activeMetricConfig.label} chart showing network performance over time`}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+    return data
+      .filter(item => new Date(item.timestamp).getTime() > cutoff)
+      .map(item => ({
+        date: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        nodes: item.onlineNodes,
+        latency: item.avgResponseTime,
+        storage: item.storageUsedTB,
+      }));
+  };
+
+  const formatYAxisValue = (value: number) => {
+    if (value === 0) return "";
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return value.toString();
+  };
+
+  const renderChart = (chartData: ReturnType<typeof getFilteredData>) => {
+    return (
+      <div className="bg-accent rounded-lg p-3">
+        <ChartContainer className="md:aspect-[3/1] w-full" config={chartConfig}>
+          <AreaChart
+            accessibilityLayer
+            data={chartData}
+            margin={{
+              left: -12,
+              right: 12,
+              top: 12,
+              bottom: 12,
+            }}
+          >
             <defs>
-              <linearGradient id={`gradient-${activeMetric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={activeMetricConfig.color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={activeMetricConfig.color} stopOpacity={0} />
+              <linearGradient id="fillNodes" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--color-nodes)"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--color-nodes)"
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
+              <linearGradient id="fillLatency" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--color-latency)"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--color-latency)"
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
+              <linearGradient id="fillStorage" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--color-storage)"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--color-storage)"
+                  stopOpacity={0.1}
+                />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+            <CartesianGrid
+              horizontal={false}
+              strokeDasharray="8 8"
+              strokeWidth={2}
+              stroke="var(--muted-foreground)"
+              opacity={0.3}
+            />
             <XAxis
-              dataKey="time"
-              axisLine={false}
+              dataKey="date"
               tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-              interval="preserveStartEnd"
+              tickMargin={12}
+              strokeWidth={1.5}
+              className="uppercase text-sm fill-muted-foreground"
             />
             <YAxis
-              axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-              width={50}
+              axisLine={false}
+              tickMargin={0}
+              tickCount={6}
+              className="text-sm fill-muted-foreground"
+              tickFormatter={formatYAxisValue}
+              domain={[0, "dataMax"]}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
-              formatter={(value) => [formatValue(value as number), activeMetricConfig.label]}
-              labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+            <ChartTooltip
+              cursor={false}
+              content={
+                <ChartTooltipContent
+                  indicator="dot"
+                  className="min-w-[200px] px-4 py-3"
+                />
+              }
             />
             <Area
-              type="monotone"
-              dataKey={activeMetric}
-              stroke={activeMetricConfig.color}
+              dataKey="nodes"
+              type="linear"
+              fill="none"
+              stroke="var(--color-nodes)"
               strokeWidth={2}
-              fill={`url(#gradient-${activeMetric})`}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+            <Area
+              dataKey="latency"
+              type="linear"
+              fill="none"
+              stroke="var(--color-latency)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+            <Area
+              dataKey="storage"
+              type="linear"
+              fill="none"
+              stroke="var(--color-storage)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <Tabs
+      value={activeTab}
+      onValueChange={handleTabChange}
+      className="max-md:gap-4"
+    >
+      <div className="flex items-center justify-between mb-4 max-md:contents">
+        <TabsList className="max-md:w-full">
+          <TabsTrigger value="1h">1H</TabsTrigger>
+          <TabsTrigger value="6h">6H</TabsTrigger>
+          <TabsTrigger value="24h">24H</TabsTrigger>
+        </TabsList>
+        <div className="flex items-center gap-6 max-md:order-1">
+          {Object.entries(chartConfig).map(([key, value]) => (
+            <ChartLegend key={key} label={value.label} color={value.color} />
+          ))}
+        </div>
+      </div>
+      <TabsContent value="1h" className="space-y-4">
+        {renderChart(getFilteredData("1h"))}
+      </TabsContent>
+      <TabsContent value="6h" className="space-y-4">
+        {renderChart(getFilteredData("6h"))}
+      </TabsContent>
+      <TabsContent value="24h" className="space-y-4">
+        {renderChart(getFilteredData("24h"))}
+      </TabsContent>
+    </Tabs>
   );
 }
+
+export const ChartLegend = ({
+  label,
+  color,
+}: {
+  label: string;
+  color: string;
+}) => {
+  return (
+    <div className="flex items-center gap-2 uppercase">
+      <Bullet style={{ backgroundColor: color }} className="rotate-45" />
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+    </div>
+  );
+};

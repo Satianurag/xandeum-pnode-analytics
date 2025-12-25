@@ -10,7 +10,7 @@ import ChatConversation from "./chat-conversation";
 import { ChatHeader } from "./chat-header";
 
 const CONTENT_HEIGHT = 420; // Height of expandable content
-const MARQUEE_HEIGHT = 32; // Height of the bottom marquee (h-8 = 32px)
+const MARQUEE_HEIGHT = 24; // Height of the bottom marquee (h-6 = 24px)
 
 export default function Chat() {
   const {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import TrophyIcon from "@/components/icons/trophy";
+import StatBlock from "@/components/dashboard/stat-block";
 import { usePNodes, usePerformanceHistory } from "@/hooks/use-pnode-data-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -67,31 +68,35 @@ export default function PerformancePage() {
       }}
     >
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="p-4 rounded-lg border-2 border-primary/50 bg-primary/5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Avg Score</div>
-          <div className="text-3xl font-display text-primary">{avgScore.toFixed(1)}</div>
-          <div className="text-xs text-muted-foreground mt-1">network wide</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-green-500/30 bg-green-500/5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Excellent</div>
-          <div className="text-3xl font-display text-green-500">{excellentCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">score &gt; 90</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-blue-500/30 bg-blue-500/5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Good</div>
-          <div className="text-3xl font-display text-blue-500">{goodCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">score 75-90</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-yellow-500/30 bg-yellow-500/5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Fair</div>
-          <div className="text-3xl font-display text-yellow-500">{fairCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">score 50-75</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-red-500/30 bg-red-500/5">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Poor</div>
-          <div className="text-3xl font-display text-red-500">{poorCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">score &lt; 50</div>
-        </div>
+        <StatBlock
+          label="Avg Score"
+          value={avgScore.toFixed(1)}
+          description="network wide"
+          variant="primary"
+        />
+        <StatBlock
+          label="Excellent"
+          value={excellentCount}
+          description="score > 90"
+          variant="success"
+        />
+        <StatBlock
+          label="Good"
+          value={goodCount}
+          description="score 75-90"
+        />
+        <StatBlock
+          label="Fair"
+          value={fairCount}
+          description="score 50-75"
+          variant="warning"
+        />
+        <StatBlock
+          label="Poor"
+          value={poorCount}
+          description="score < 50"
+          variant="error"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

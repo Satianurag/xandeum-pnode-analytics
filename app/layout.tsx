@@ -81,7 +81,7 @@ export default function RootLayout({
                   </div>
                   <main id="main-content" className="col-span-1 lg:col-span-7">{children}</main>
                   <div className="col-span-3 hidden lg:block">
-                    <div className="fixed right-[var(--sides)] top-0 bottom-8 w-[calc((100vw-var(--sides)*2-var(--gap)*2)/12*3)] space-y-gap pt-sides overflow-clip">
+                    <div className="fixed right-[var(--sides)] top-0 bottom-6 w-[calc((100vw-var(--sides)*2-var(--gap)*2)/12*3)] space-y-gap pt-sides overflow-clip">
                       <Widget />
                       <Notifications />
                       <Chat />

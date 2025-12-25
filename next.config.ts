@@ -11,9 +11,7 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingRoot: path.resolve(__dirname),
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
+
   allowedDevOrigins: ["*.replit.dev", "*.sisko.replit.dev"],
 }
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import ChartIcon from "@/components/icons/chart";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useTrendData } from "@/hooks/use-pnode-data-query";
+import StatBlock from "@/components/dashboard/stat-block";
 import { NetworkChart } from "@/components/dashboard/network-chart";
 import { ExportButton } from "@/components/dashboard/export-button";
 import { InfoTooltip } from "@/components/dashboard/info-tooltip";
@@ -77,26 +78,29 @@ export default function AnalyticsPage({
       }}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">24h Growth</div>
-          <div className="text-3xl font-display text-green-400">+3.2%</div>
-          <div className="text-xs text-muted-foreground mt-1">node count</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">7d Growth</div>
-          <div className="text-3xl font-display text-green-400">+12.5%</div>
-          <div className="text-xs text-muted-foreground mt-1">storage capacity</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">30d Trend</div>
-          <div className="text-3xl font-display text-primary">+28.7%</div>
-          <div className="text-xs text-muted-foreground mt-1">network expansion</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Projection</div>
-          <div className="text-3xl font-display">{Math.floor((nodes?.length || 0) * 1.5)}</div>
-          <div className="text-xs text-muted-foreground mt-1">nodes by 60d</div>
-        </div>
+        <StatBlock
+          label="24h Growth"
+          value="+3.2%"
+          description="node count"
+          variant="success"
+        />
+        <StatBlock
+          label="7d Growth"
+          value="+12.5%"
+          description="storage capacity"
+          variant="success"
+        />
+        <StatBlock
+          label="30d Trend"
+          value="+28.7%"
+          description="network expansion"
+          variant="primary"
+        />
+        <StatBlock
+          label="Projection"
+          value={Math.floor((nodes?.length || 0) * 1.5)}
+          description="nodes by 60d"
+        />
       </div>
 
       <div className="flex items-center justify-between gap-4 mb-2">
