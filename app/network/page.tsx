@@ -48,26 +48,63 @@ export default function NetworkPage() {
         icon: GlobeIcon,
       }}
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Active Nodes</div>
-          <div className="text-3xl font-display text-green-400">{onlineNodes.length}</div>
-          <div className="text-xs text-muted-foreground mt-1">of {nodes?.length || 0} total</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Avg Peers</div>
-          <div className="text-3xl font-display">{avgPeers.toFixed(1)}</div>
-          <div className="text-xs text-muted-foreground mt-1">connections per node</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Message Rate</div>
-          <div className="text-3xl font-display">{gossipHealth?.messageRate.toLocaleString()}</div>
-          <div className="text-xs text-muted-foreground mt-1">msgs/sec</div>
-        </div>
-        <div className="p-4 rounded-lg border-2 border-border">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Network Latency</div>
-          <div className="text-3xl font-display">{gossipHealth?.networkLatency.toFixed(0)}ms</div>
-          <div className="text-xs text-muted-foreground mt-1">avg propagation</div>
+      <div className="rounded-lg border-2 border-border overflow-hidden mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4">
+          {/* Active Nodes */}
+          <div className="border-r border-b lg:border-b-0 border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-green-500" />
+                Active Nodes
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display text-green-400">{onlineNodes.length}</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">of {nodes?.length || 0} total</p>
+            </div>
+          </div>
+
+          {/* Avg Peers */}
+          <div className="border-b lg:border-b-0 lg:border-r border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-primary" />
+                Avg Peers
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display">{avgPeers.toFixed(1)}</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">connections per node</p>
+            </div>
+          </div>
+
+          {/* Message Rate */}
+          <div className="border-r border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-primary" />
+                Message Rate
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display">{gossipHealth?.messageRate.toLocaleString()}</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">msgs/sec</p>
+            </div>
+          </div>
+
+          {/* Network Latency */}
+          <div>
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-primary" />
+                Network Latency
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display">{gossipHealth?.networkLatency.toFixed(0)}ms</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">avg propagation</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -91,17 +128,19 @@ export default function NetworkPage() {
         {distribution && <StorageDistributionPanel distribution={distribution} />}
       </div>
 
-      <div className="rounded-lg border-2 border-border p-4">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">
-          Peer Connection Distribution
+      <div className="rounded-lg border-2 border-border overflow-hidden">
+        <div className="px-4 py-2 border-b border-border bg-accent/20">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">
+            Peer Connection Distribution
+          </span>
         </div>
-        <div className="space-y-2">
+        <div className="p-4 space-y-3">
           {[
-            { label: '50+ peers', min: 50, max: Infinity, color: 'bg-green-500' },
-            { label: '30-50 peers', min: 30, max: 50, color: 'bg-blue-500' },
-            { label: '15-30 peers', min: 15, max: 30, color: 'bg-yellow-500' },
-            { label: '< 15 peers', min: 0, max: 15, color: 'bg-red-500' },
-          ].map(({ label, min, max, color }) => {
+            { label: '50+ peers', min: 50, max: Infinity, color: 'bg-green-500', bullet: 'bg-green-500' },
+            { label: '30-50 peers', min: 30, max: 50, color: 'bg-blue-500', bullet: 'bg-blue-500' },
+            { label: '15-30 peers', min: 15, max: 30, color: 'bg-yellow-500', bullet: 'bg-yellow-500' },
+            { label: '< 15 peers', min: 0, max: 15, color: 'bg-red-500', bullet: 'bg-red-500' },
+          ].map(({ label, min, max, color, bullet }) => {
             const count = onlineNodes.filter(n =>
               n.gossip.peersConnected >= min && n.gossip.peersConnected < max
             ).length;
@@ -109,37 +148,82 @@ export default function NetworkPage() {
 
             return (
               <div key={label} className="flex items-center gap-3">
-                <div className="w-24 text-xs text-muted-foreground">{label}</div>
-                <div className="flex-1 h-4 bg-accent rounded overflow-hidden">
-                  <div className={`h-full rounded transition-all ${color}`} style={{ width: `${percentage}%` }} />
+                <div className="flex items-center gap-2 w-28">
+                  <span className={`size-2 rounded-full ${bullet}`} />
+                  <span className="text-xs font-medium uppercase">{label}</span>
+                </div>
+                <div className="flex-1 h-3 bg-accent rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${percentage}%` }} />
                 </div>
                 <div className="w-20 text-right text-xs font-mono">{count} nodes</div>
+                <div className="w-12 text-right text-xs text-muted-foreground">{percentage.toFixed(0)}%</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="rounded-lg border-2 border-border p-4">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-4">
-          Gossip Message Flow (Last Hour)
+      <div className="rounded-lg border-2 border-border overflow-hidden">
+        <div className="px-4 py-2 border-b border-border bg-accent/20">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">
+            Gossip Message Flow (Last Hour)
+          </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-3 bg-accent/20 rounded-lg text-center">
-            <div className="text-2xl font-display text-primary">{(totalMessages / 1000000).toFixed(1)}M</div>
-            <div className="text-xs text-muted-foreground">Total Messages</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4">
+          {/* Total Messages */}
+          <div className="border-r border-b lg:border-b-0 border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-primary" />
+                Total Messages
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display text-primary">{(totalMessages / 1000000).toFixed(1)}M</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">messages processed</p>
+            </div>
           </div>
-          <div className="p-3 bg-accent/20 rounded-lg text-center">
-            <div className="text-2xl font-display">{gossipHealth?.totalPeers.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">Total Connections</div>
+
+          {/* Total Connections */}
+          <div className="border-b lg:border-b-0 lg:border-r border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-primary" />
+                Total Connections
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display">{gossipHealth?.totalPeers.toLocaleString()}</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">peer connections</p>
+            </div>
           </div>
-          <div className="p-3 bg-accent/20 rounded-lg text-center">
-            <div className="text-2xl font-display">{gossipHealth?.partitions || 0}</div>
-            <div className="text-xs text-muted-foreground">Network Partitions</div>
+
+          {/* Network Partitions */}
+          <div className="border-r border-border">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className={`size-2 rounded-full ${gossipHealth?.partitions ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                Network Partitions
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display">{gossipHealth?.partitions || 0}</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">detected splits</p>
+            </div>
           </div>
-          <div className="p-3 bg-accent/20 rounded-lg text-center">
-            <div className="text-2xl font-display text-green-400">{gossipHealth?.healthScore.toFixed(0)}%</div>
-            <div className="text-xs text-muted-foreground">Gossip Health</div>
+
+          {/* Gossip Health */}
+          <div>
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                <span className="size-2 rounded-full bg-green-500" />
+                Gossip Health
+              </div>
+            </div>
+            <div className="bg-accent p-3">
+              <div className="text-3xl font-display text-green-400">{gossipHealth?.healthScore.toFixed(0)}%</div>
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">protocol health</p>
+            </div>
           </div>
         </div>
       </div>

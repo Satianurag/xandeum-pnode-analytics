@@ -2,10 +2,15 @@
 
 import { Suspense, lazy, useState, useEffect } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
+import { Bullet } from "@/components/ui/bullet";
 import BracketsIcon from "@/components/icons/brackets";
 import GearIcon from "@/components/icons/gear";
 import ProcessorIcon from "@/components/icons/proccesor";
 import BoomIcon from "@/components/icons/boom";
+import TrophyIcon from "@/components/icons/trophy";
+import ServerIcon from "@/components/icons/server";
+import AtomIcon from "@/components/icons/atom";
+import GlobeIcon from "@/components/icons/globe";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useGossipEvents, useXScore } from "@/hooks/use-pnode-data-query";
 import DashboardStat from "@/components/dashboard/stat";
 import { NetworkChart } from "@/components/dashboard/network-chart";
@@ -102,50 +107,69 @@ export default function DashboardOverview({
       </div>
 
       {xScore && (
-        <div className="rounded-lg border-2 border-border p-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              Network X-Score
-              <InfoTooltip content="A composite score (0-100) representing overall network health, calculated from throughput, latency, uptime, and gossip health. Grade: S (95+), A (85+), B (70+), C (50+), D (30+), F (<30)." />
-            </span>
-            <span className={`text-2xl font-display ${xScore.grade === 'S' ? 'text-yellow-400' :
-              xScore.grade === 'A' ? 'text-green-400' :
-                xScore.grade === 'B' ? 'text-blue-400' :
-                  xScore.grade === 'C' ? 'text-orange-400' :
-                    'text-red-400'
-              }`}>
-              {xScore.grade}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
-                Overall
-                <InfoTooltip content="Weighted average score combining all network performance metrics." />
+        <div className="rounded-lg border-2 border-border overflow-hidden mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4">
+            {/* Network X-Score */}
+            <div className="border-r border-b lg:border-b-0 border-border">
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                  <Bullet variant={
+                    xScore.grade === 'S' || xScore.grade === 'A' ? "success" :
+                      xScore.grade === 'B' ? "warning" : "destructive"
+                  } />
+                  Network X-Score
+                </div>
+                <TrophyIcon className="size-4 text-muted-foreground" />
               </div>
-              <div className="text-xl font-display text-primary">{xScore.overall.toFixed(1)}</div>
-            </div>
-            <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
-                Throughput
-                <InfoTooltip content="Measures data read/write efficiency. Higher throughput = better performance for storage operations." />
+              <div className="bg-accent p-3">
+                <div className="text-3xl font-display">{xScore.grade}</div>
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">SCORE: {xScore.overall.toFixed(1)}</p>
               </div>
-              <div className="text-xl font-display text-cyan-400">{xScore.storageThroughput.toFixed(1)}</div>
-            </div>
-            <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
-                Latency
-                <InfoTooltip content="Time to make stored data available for retrieval. Lower latency scores higher." />
-              </div>
-              <div className="text-xl font-display text-green-400">{xScore.dataAvailabilityLatency.toFixed(1)}</div>
             </div>
 
-            <div className="p-3 rounded-lg bg-accent/20 border border-border">
-              <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
-                Gossip
-                <InfoTooltip content="Measures gossip protocol health including peer discovery, message propagation, and network sync." />
+            {/* Throughput */}
+            <div className="border-b lg:border-b-0 lg:border-r border-border">
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                  <Bullet variant="success" />
+                  Throughput
+                </div>
+                <ServerIcon className="size-4 text-muted-foreground" />
               </div>
-              <div className="text-xl font-display text-purple-400">{xScore.gossipHealth.toFixed(1)}</div>
+              <div className="bg-accent p-3">
+                <div className="text-3xl font-display">{xScore.storageThroughput.toFixed(1)}</div>
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">STORAGE OPS</p>
+              </div>
+            </div>
+
+            {/* Data Latency */}
+            <div className="border-r border-border">
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                  <Bullet variant="success" />
+                  Data Latency
+                </div>
+                <AtomIcon className="size-4 text-muted-foreground" />
+              </div>
+              <div className="bg-accent p-3">
+                <div className="text-3xl font-display">{xScore.dataAvailabilityLatency.toFixed(1)}</div>
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">AVAILABILITY</p>
+              </div>
+            </div>
+
+            {/* Gossip Health */}
+            <div>
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+                  <Bullet variant="success" />
+                  Gossip Health
+                </div>
+                <GlobeIcon className="size-4 text-muted-foreground" />
+              </div>
+              <div className="bg-accent p-3">
+                <div className="text-3xl font-display">{xScore.gossipHealth.toFixed(1)}</div>
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">PROTOCOL SYNC</p>
+              </div>
             </div>
           </div>
         </div>

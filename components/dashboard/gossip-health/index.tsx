@@ -8,42 +8,85 @@ interface GossipHealthProps {
 }
 
 export function GossipHealthPanel({ health }: GossipHealthProps) {
-  const healthColor = health.healthScore >= 90 ? 'text-green-500' 
-    : health.healthScore >= 70 ? 'text-yellow-500' 
-    : 'text-red-500';
+  const healthColor = health.healthScore >= 90 ? 'text-green-500'
+    : health.healthScore >= 70 ? 'text-yellow-500'
+      : 'text-red-500';
+
+  const bulletColor = health.healthScore >= 90 ? 'bg-green-500'
+    : health.healthScore >= 70 ? 'bg-yellow-500'
+      : 'bg-red-500';
 
   return (
-    <div className="p-4 rounded-lg border-2 border-border">
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider">
+    <div className="rounded-lg border-2 border-border overflow-hidden">
+      <div className="px-4 py-2 border-b border-border bg-accent/20 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider">
           Gossip Protocol Health
-        </div>
-        <div className={cn('text-2xl font-display', healthColor)}>
+        </span>
+        <span className={cn('text-lg font-display', healthColor)}>
           {health.healthScore.toFixed(0)}%
-        </div>
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-accent/30 rounded p-3">
-          <div className="text-xs text-muted-foreground uppercase">Total Peers</div>
-          <div className="text-xl font-mono">{health.totalPeers.toLocaleString()}</div>
+      <div className="grid grid-cols-2">
+        {/* Total Peers */}
+        <div className="border-r border-b border-border">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+              <span className="size-2 rounded-full bg-primary" />
+              Total Peers
+            </div>
+          </div>
+          <div className="bg-accent p-3">
+            <div className="text-2xl font-display">{health.totalPeers.toLocaleString()}</div>
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">connections</p>
+          </div>
         </div>
-        <div className="bg-accent/30 rounded p-3">
-          <div className="text-xs text-muted-foreground uppercase">Avg Peers/Node</div>
-          <div className="text-xl font-mono">{health.avgPeersPerNode.toFixed(1)}</div>
+
+        {/* Avg Peers/Node */}
+        <div className="border-b border-border">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+              <span className="size-2 rounded-full bg-primary" />
+              Avg Peers/Node
+            </div>
+          </div>
+          <div className="bg-accent p-3">
+            <div className="text-2xl font-display">{health.avgPeersPerNode.toFixed(1)}</div>
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">per node</p>
+          </div>
         </div>
-        <div className="bg-accent/30 rounded p-3">
-          <div className="text-xs text-muted-foreground uppercase">Message Rate</div>
-          <div className="text-xl font-mono">{health.messageRate.toLocaleString()}/s</div>
+
+        {/* Message Rate */}
+        <div className="border-r border-border">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+              <span className="size-2 rounded-full bg-primary" />
+              Message Rate
+            </div>
+          </div>
+          <div className="bg-accent p-3">
+            <div className="text-2xl font-display">{health.messageRate.toLocaleString()}/s</div>
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">msgs/sec</p>
+          </div>
         </div>
-        <div className="bg-accent/30 rounded p-3">
-          <div className="text-xs text-muted-foreground uppercase">Network Latency</div>
-          <div className="text-xl font-mono">{health.networkLatency.toFixed(0)}ms</div>
+
+        {/* Network Latency */}
+        <div>
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2.5 font-semibold leading-none tracking-tight text-sm uppercase">
+              <span className="size-2 rounded-full bg-primary" />
+              Network Latency
+            </div>
+          </div>
+          <div className="bg-accent p-3">
+            <div className="text-2xl font-display">{health.networkLatency.toFixed(0)}ms</div>
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">avg latency</p>
+          </div>
         </div>
       </div>
 
       {health.partitions > 0 && (
-        <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+        <div className="p-3 bg-yellow-500/10 border-t border-yellow-500/30">
           <div className="text-xs text-yellow-500 uppercase font-medium">
             ⚠ {health.partitions} Network Partition{health.partitions > 1 ? 's' : ''} Detected
           </div>
