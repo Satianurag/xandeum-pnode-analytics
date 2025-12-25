@@ -129,21 +129,6 @@ const data = {
       ],
     },
     {
-      title: "Economics",
-      items: [
-        {
-          title: "Staking",
-          url: "/staking",
-          icon: CoinsIcon,
-        },
-        {
-          title: "Epochs",
-          url: "/epochs",
-          icon: ClockIcon,
-        },
-      ],
-    },
-    {
       title: "Infrastructure",
       items: [
         {

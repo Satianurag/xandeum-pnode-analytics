@@ -197,21 +197,32 @@ export function useStakingStats() {
 export function useDecentralizationMetrics() {
     return useQuery({
         queryKey: ['decentralization-metrics'],
-        queryFn: async () => null
+        queryFn: async () => {
+            const response = await fetch('/api/decentralization');
+            if (!response.ok) return null;
+            return response.json();
+        },
+        refetchInterval: 300000,
     });
 }
 
 export function useVersionDistribution() {
     return useQuery({
         queryKey: ['version-distribution'],
-        queryFn: async () => []
+        queryFn: async () => [],
+        refetchInterval: 300000,
     });
 }
 
 export function useHealthScoreBreakdown() {
     return useQuery({
         queryKey: ['health-score-breakdown'],
-        queryFn: async () => null
+        queryFn: async () => {
+            const response = await fetch('/api/health-score');
+            if (!response.ok) return null;
+            return response.json();
+        },
+        refetchInterval: 300000,
     });
 }
 
@@ -246,21 +257,36 @@ export function useSlashingEvents() {
 export function usePeerRankings() {
     return useQuery({
         queryKey: ['peer-rankings'],
-        queryFn: async () => []
+        queryFn: async () => {
+            const response = await fetch('/api/peer-rankings');
+            if (!response.ok) return [];
+            return response.json();
+        },
+        refetchInterval: 300000,
     });
 }
 
 export function useSuperminorityInfo() {
     return useQuery({
         queryKey: ['superminority-info'],
-        queryFn: async () => null
+        queryFn: async () => {
+            const response = await fetch('/api/superminority');
+            if (!response.ok) return null;
+            return response.json();
+        },
+        refetchInterval: 300000,
     });
 }
 
 export function useCensorshipResistanceScore() {
     return useQuery({
         queryKey: ['censorship-resistance-score'],
-        queryFn: async () => null
+        queryFn: async () => {
+            const response = await fetch('/api/censorship-resistance');
+            if (!response.ok) return null;
+            return response.json();
+        },
+        refetchInterval: 300000,
     });
 }
 
