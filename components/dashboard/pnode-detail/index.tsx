@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import type { PNode } from '@/types/pnode';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +13,11 @@ interface PNodeDetailProps {
 }
 
 export function PNodeDetail({ node, open, onClose }: PNodeDetailProps) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!node) return null;
 
   const getStatusColor = (status: PNode['status']) => {
@@ -78,8 +85,8 @@ export function PNodeDetail({ node, open, onClose }: PNodeDetailProps) {
             />
             <MetricCard
               label="Last Seen"
-              value={new Date(node.lastSeen).toLocaleTimeString()}
-              subValue={new Date(node.lastSeen).toLocaleDateString()}
+              value={mounted ? new Date(node.lastSeen).toLocaleTimeString() : '---'}
+              subValue={mounted ? new Date(node.lastSeen).toLocaleDateString() : '---'}
             />
           </div>
 
@@ -130,11 +137,11 @@ export function PNodeDetail({ node, open, onClose }: PNodeDetailProps) {
               />
               <MetricCard
                 label="Messages Received"
-                value={node.gossip.messagesReceived.toLocaleString()}
+                value={mounted ? node.gossip.messagesReceived.toLocaleString() : '---'}
               />
               <MetricCard
                 label="Messages Sent"
-                value={node.gossip.messagesSent.toLocaleString()}
+                value={mounted ? node.gossip.messagesSent.toLocaleString() : '---'}
               />
             </div>
           </div>

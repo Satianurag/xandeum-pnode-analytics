@@ -32,7 +32,7 @@ export function NetworkMarquee() {
         { label: 'NODES ONLINE', value: `${stats.onlineNodes}/${stats.totalNodes}` },
         { label: 'NETWORK HEALTH', value: `${stats.networkHealth.toFixed(1)}%` },
         { label: 'AVG RESPONSE', value: `${stats.averageResponseTime.toFixed(0)}ms` },
-        { label: 'STORAGE USED', value: `${stats.totalStorageUsedTB.toFixed(1)}TB` },
+        { label: 'STORAGE USED', value: stats.totalStorageUsedTB < 0.1 ? `${(stats.totalStorageUsedTB * 1000).toFixed(1)}GB` : `${stats.totalStorageUsedTB.toFixed(1)}TB` },
         { label: 'STORAGE CAPACITY', value: `${stats.totalStorageCapacityTB.toFixed(1)}TB` },
         { label: 'GOSSIP MSGS 24H', value: `${(stats.gossipMessages24h / 1_000_000).toFixed(1)}M` },
         { label: 'OFFLINE NODES', value: stats.offlineNodes.toString() },

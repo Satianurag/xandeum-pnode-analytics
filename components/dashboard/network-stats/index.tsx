@@ -37,7 +37,7 @@ export function NetworkStatsGrid({ stats }: NetworkStatsProps) {
       />
       <StatCard
         label="TOTAL STORAGE"
-        value={`${stats.totalStorageUsedTB.toFixed(1)}TB`}
+        value={stats.totalStorageUsedTB < 0.1 ? `${(stats.totalStorageUsedTB * 1000).toFixed(1)}GB` : `${stats.totalStorageUsedTB.toFixed(1)}TB`}
         description={`OF ${stats.totalStorageCapacityTB.toFixed(1)}TB CAPACITY`}
         icon={HardDriveIcon}
         intent="neutral"

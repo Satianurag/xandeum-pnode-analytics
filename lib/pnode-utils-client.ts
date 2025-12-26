@@ -1,4 +1,4 @@
-import { PNode, GossipEvent, XScore } from '@/types/pnode';
+import { PNode, GossipEvent } from '@/types/pnode';
 
 // Moved from server/api/decentralization.ts to allow client-side usage
 export function generateGossipEvents(nodes: PNode[]): GossipEvent[] {
@@ -33,31 +33,3 @@ export function generateGossipEvents(nodes: PNode[]): GossipEvent[] {
     return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-export function calculateXScore(node: PNode): XScore {
-    const storageThroughput = Math.min(100, (node.metrics.storageUsedGB / node.metrics.storageCapacityGB * 100) * 1.5);
-    const dataAvailabilityLatency = Math.max(0, 100 - node.metrics.responseTimeMs * 0.5);
-    const uptime = node.uptime;
-    const gossipHealth = Math.min(100, node.gossip.peersConnected * 2);
-    const peerConnectivity = Math.min(100, node.gossip.peersConnected * 3);
-
-    const overall = (storageThroughput * 0.25) + (dataAvailabilityLatency * 0.25) + (uptime * 0.20) + (gossipHealth * 0.15) + (peerConnectivity * 0.15);
-
-    return {
-        overall,
-        storageThroughput,
-        dataAvailabilityLatency,
-        uptime,
-        gossipHealth,
-        peerConnectivity,
-        grade: getXScoreGrade(overall),
-    };
-}
-
-export function getXScoreGrade(score: number): 'S' | 'A' | 'B' | 'C' | 'D' | 'F' {
-    if (score >= 95) return 'S';
-    if (score >= 85) return 'A';
-    if (score >= 70) return 'B';
-    if (score >= 55) return 'C';
-    if (score >= 40) return 'D';
-    return 'F';
-}

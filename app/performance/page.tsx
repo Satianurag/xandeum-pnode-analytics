@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import { usePNodes, usePerformanceHistory } from "@/hooks/use-pnode-data-query";
 import type { PNode } from "@/types/pnode";
@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Bullet } from "@/components/ui/bullet";
 import { cn } from "@/lib/utils";
-import NumberFlow from "@number-flow/react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -29,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Icons
 import TrophyIcon from "@/components/icons/trophy";
 import BoomIcon from "@/components/icons/boom";
-import ProcessorIcon from "@/components/icons/proccesor";
+import ProcessorIcon from "@/components/icons/processor";
 import GearIcon from "@/components/icons/gear";
 import ServerIcon from "@/components/icons/server";
 
@@ -69,9 +68,35 @@ const chartConfig = {
 import { StatCard } from "@/components/dashboard/stat-card";
 
 export default function PerformancePage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { data: nodes, isLoading, dataUpdatedAt } = usePNodes();
   const { data: history } = usePerformanceHistory();
   const [activeTab, setActiveTab] = useState<TimePeriod>("24h");
+
+  // Filter data based on time period
+  const filteredData = useMemo(() => {
+    if (!history) return [];
+    const hours = activeTab === "1h" ? 1 : activeTab === "6h" ? 6 : 24;
+    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+
+    return history
+      .filter(item => new Date(item.timestamp).getTime() > cutoff)
+      .map(item => ({
+        date: mounted ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        latency: item.avgResponseTime,
+      }));
+  }, [history, activeTab, mounted]);
+
+  const topNodes = useMemo(() => {
+    if (!nodes) return [];
+    return [...nodes]
+      .sort((a: PNode, b: PNode) => (b.performance?.score || 0) - (a.performance?.score || 0))
+      .slice(0, 10);
+  }, [nodes]);
 
   const handleTabChange = (value: string) => {
     if (value === "1h" || value === "6h" || value === "24h") {
@@ -79,21 +104,19 @@ export default function PerformancePage() {
     }
   };
 
-  // Filter data based on time period
-  const getFilteredData = (period: TimePeriod) => {
-    const now = Date.now();
-    const hours = period === "1h" ? 1 : period === "6h" ? 6 : 24;
-    const cutoff = now - hours * 60 * 60 * 1000;
+  const isActuallyLoading = isLoading && !nodes;
 
-    return history
-      ?.filter(item => new Date(item.timestamp).getTime() > cutoff)
-      .map(item => ({
-        date: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        latency: item.avgResponseTime,
-      })) || [];
-  };
+  const onlineNodes = nodes?.filter((n: PNode) => n.status === 'online') || [];
+  const excellentCount = onlineNodes.filter((n: PNode) => n.performance?.tier === 'excellent').length;
+  const goodCount = onlineNodes.filter((n: PNode) => n.performance?.tier === 'good').length;
+  const fairCount = onlineNodes.filter((n: PNode) => n.performance?.tier === 'fair').length;
+  const poorCount = onlineNodes.filter((n: PNode) => n.performance?.tier === 'poor').length;
 
-  if (isLoading && !nodes) {
+  const avgScore = onlineNodes.length > 0
+    ? onlineNodes.reduce((acc: number, n: PNode) => acc + (n.performance?.score || 0), 0) / onlineNodes.length
+    : 0;
+
+  if (isActuallyLoading) {
     return (
       <DashboardPageLayout header={{ title: "Performance", description: "Loading...", icon: TrophyIcon }}>
         <LoadingState />
@@ -101,23 +124,11 @@ export default function PerformancePage() {
     );
   }
 
-  const onlineNodes = nodes?.filter((n: PNode) => n.status === 'online') || [];
-  const excellentCount = onlineNodes.filter((n: PNode) => n.performance.tier === 'excellent').length;
-  const goodCount = onlineNodes.filter((n: PNode) => n.performance.tier === 'good').length;
-  const fairCount = onlineNodes.filter((n: PNode) => n.performance.tier === 'fair').length;
-  const poorCount = onlineNodes.filter((n: PNode) => n.performance.tier === 'poor').length;
-
-  const avgScore = onlineNodes.length > 0
-    ? onlineNodes.reduce((acc: number, n: PNode) => acc + n.performance.score, 0) / onlineNodes.length
-    : 0;
-
-  const topNodes = nodes?.sort((a: any, b: any) => (b.performanceScore || 0) - (a.performanceScore || 0)).slice(0, 10) || [];
-
   return (
     <DashboardPageLayout
       header={{
         title: "Performance",
-        description: `Rankings & metrics • ${dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Loading...'}`,
+        description: `Rankings & metrics • ${mounted && dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Loading...'}`,
         icon: TrophyIcon,
       }}
     >
@@ -176,22 +187,22 @@ export default function PerformancePage() {
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-sm truncate uppercase">{node.pubkey.slice(0, 20)}...</div>
+                  <div className="font-mono text-sm truncate uppercase">{(node.pubkey || 'UNKNOWN').slice(0, 20)}...</div>
                   <div className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                    {node.location?.city}, {node.location?.countryCode} • {node.uptime.toFixed(1)}% UPTIME
+                    {node.location?.city || 'Unknown'}, {node.location?.countryCode || 'UN'} • {(node.uptime || 0).toFixed(1)}% UPTIME
                   </div>
                 </div>
                 <div className="text-right">
                   <div className={cn(
                     "font-mono text-lg",
-                    node.performance.tier === 'excellent' ? 'text-green-400' :
-                      node.performance.tier === 'good' ? 'text-blue-400' :
+                    node.performance?.tier === 'excellent' ? 'text-green-400' :
+                      node.performance?.tier === 'good' ? 'text-blue-400' :
                         'text-yellow-400'
                   )}>
-                    {node.performance.score.toFixed(1)}
+                    {(node.performance?.score || 0).toFixed(1)}
                   </div>
                   <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-tight">
-                    {node.metrics.responseTimeMs.toFixed(0)}MS
+                    {(node.metrics?.responseTimeMs || 0).toFixed(0)}MS
                   </div>
                 </div>
               </div>
@@ -220,222 +231,228 @@ export default function PerformancePage() {
               </div>
             </div>
             <TabsContent value="1h" className="space-y-4">
-              <div className="bg-accent rounded-lg p-3">
-                <ChartContainer className="md:aspect-[3/1] w-full" config={chartConfig}>
-                  <AreaChart
-                    accessibilityLayer
-                    data={getFilteredData("1h")}
-                    margin={{
-                      left: -12,
-                      right: 12,
-                      top: 12,
-                      bottom: 12,
-                    }}
-                  >
-                    <defs>
-                      <linearGradient id="fillLatency" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="5%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.1}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      horizontal={false}
-                      strokeDasharray="8 8"
-                      strokeWidth={2}
-                      stroke="var(--muted-foreground)"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      tickMargin={12}
-                      strokeWidth={1.5}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="uppercase text-sm"
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={0}
-                      tickCount={6}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="text-sm"
-                      domain={[0, "dataMax"]}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={
-                        <ChartTooltipContent
-                          indicator="dot"
-                          className="min-w-[200px] px-4 py-3"
-                        />
-                      }
-                    />
-                    <Area
-                      dataKey="latency"
-                      type="linear"
-                      fill="none"
-                      stroke="var(--color-latency)"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  </AreaChart>
-                </ChartContainer>
+              <div className="bg-accent rounded-lg p-3" style={{ height: '400px' }}>
+                {mounted ? (
+                  <ChartContainer className="h-full w-full" config={chartConfig}>
+                    <AreaChart
+                      accessibilityLayer
+                      data={filteredData}
+                      margin={{
+                        left: -12,
+                        right: 12,
+                        top: 12,
+                        bottom: 12,
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id="fillLatency-1h" x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        horizontal={false}
+                        strokeDasharray="8 8"
+                        strokeWidth={2}
+                        stroke="var(--muted-foreground)"
+                        opacity={0.3}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        tickMargin={12}
+                        strokeWidth={1.5}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="uppercase text-sm"
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={0}
+                        tickCount={6}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="text-sm"
+                        domain={[0, "dataMax"]}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            indicator="dot"
+                            className="min-w-[200px] px-4 py-3"
+                          />
+                        }
+                      />
+                      <Area
+                        dataKey="latency"
+                        type="linear"
+                        fill="url(#fillLatency-1h)"
+                        stroke="var(--color-latency)"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                ) : <Skeleton className="h-full w-full rounded-lg" />}
               </div>
             </TabsContent>
             <TabsContent value="6h" className="space-y-4">
-              <div className="bg-accent rounded-lg p-3">
-                <ChartContainer className="md:aspect-[3/1] w-full" config={chartConfig}>
-                  <AreaChart
-                    accessibilityLayer
-                    data={getFilteredData("6h")}
-                    margin={{
-                      left: -12,
-                      right: 12,
-                      top: 12,
-                      bottom: 12,
-                    }}
-                  >
-                    <defs>
-                      <linearGradient id="fillLatency" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="5%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.1}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      horizontal={false}
-                      strokeDasharray="8 8"
-                      strokeWidth={2}
-                      stroke="var(--muted-foreground)"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      tickMargin={12}
-                      strokeWidth={1.5}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="uppercase text-sm"
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={0}
-                      tickCount={6}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="text-sm"
-                      domain={[0, "dataMax"]}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={
-                        <ChartTooltipContent
-                          indicator="dot"
-                          className="min-w-[200px] px-4 py-3"
-                        />
-                      }
-                    />
-                    <Area
-                      dataKey="latency"
-                      type="linear"
-                      fill="none"
-                      stroke="var(--color-latency)"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  </AreaChart>
-                </ChartContainer>
+              <div className="bg-accent rounded-lg p-3" style={{ height: '400px' }}>
+                {mounted ? (
+                  <ChartContainer className="h-full w-full" config={chartConfig}>
+                    <AreaChart
+                      accessibilityLayer
+                      data={filteredData}
+                      margin={{
+                        left: -12,
+                        right: 12,
+                        top: 12,
+                        bottom: 12,
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id="fillLatency-6h" x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        horizontal={false}
+                        strokeDasharray="8 8"
+                        strokeWidth={2}
+                        stroke="var(--muted-foreground)"
+                        opacity={0.3}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        tickMargin={12}
+                        strokeWidth={1.5}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="uppercase text-sm"
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={0}
+                        tickCount={6}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="text-sm"
+                        domain={[0, "dataMax"]}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            indicator="dot"
+                            className="min-w-[200px] px-4 py-3"
+                          />
+                        }
+                      />
+                      <Area
+                        dataKey="latency"
+                        type="linear"
+                        fill="url(#fillLatency-6h)"
+                        stroke="var(--color-latency)"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                ) : <Skeleton className="h-full w-full rounded-lg" />}
               </div>
             </TabsContent>
             <TabsContent value="24h" className="space-y-4">
-              <div className="bg-accent rounded-lg p-3">
-                <ChartContainer className="md:aspect-[3/1] w-full" config={chartConfig}>
-                  <AreaChart
-                    accessibilityLayer
-                    data={getFilteredData("24h")}
-                    margin={{
-                      left: -12,
-                      right: 12,
-                      top: 12,
-                      bottom: 12,
-                    }}
-                  >
-                    <defs>
-                      <linearGradient id="fillLatency" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="5%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="var(--color-latency)"
-                          stopOpacity={0.1}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      horizontal={false}
-                      strokeDasharray="8 8"
-                      strokeWidth={2}
-                      stroke="var(--muted-foreground)"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      tickMargin={12}
-                      strokeWidth={1.5}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="uppercase text-sm"
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={0}
-                      tickCount={6}
-                      tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                      className="text-sm"
-                      domain={[0, "dataMax"]}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={
-                        <ChartTooltipContent
-                          indicator="dot"
-                          className="min-w-[200px] px-4 py-3"
-                        />
-                      }
-                    />
-                    <Area
-                      dataKey="latency"
-                      type="linear"
-                      fill="none"
-                      stroke="var(--color-latency)"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  </AreaChart>
-                </ChartContainer>
+              <div className="bg-accent rounded-lg p-3" style={{ height: '400px' }}>
+                {mounted ? (
+                  <ChartContainer className="h-full w-full" config={chartConfig}>
+                    <AreaChart
+                      accessibilityLayer
+                      data={filteredData}
+                      margin={{
+                        left: -12,
+                        right: 12,
+                        top: 12,
+                        bottom: 12,
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id="fillLatency-24h" x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-latency)"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        horizontal={false}
+                        strokeDasharray="8 8"
+                        strokeWidth={2}
+                        stroke="var(--muted-foreground)"
+                        opacity={0.3}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        tickMargin={12}
+                        strokeWidth={1.5}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="uppercase text-sm"
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={0}
+                        tickCount={6}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                        className="text-sm"
+                        domain={[0, "dataMax"]}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            indicator="dot"
+                            className="min-w-[200px] px-4 py-3"
+                          />
+                        }
+                      />
+                      <Area
+                        dataKey="latency"
+                        type="linear"
+                        fill="url(#fillLatency-24h)"
+                        stroke="var(--color-latency)"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                ) : <Skeleton className="h-full w-full rounded-lg" />}
               </div>
             </TabsContent>
           </Tabs>
@@ -447,7 +464,7 @@ export default function PerformancePage() {
         <StatCard label="PERFORMANCE TIER DISTRIBUTION" icon={ZapIcon}>
           <div className="md:mt-4">
             <div className="h-8 rounded-full overflow-hidden flex bg-card/50">
-              {excellentCount > 0 && (
+              {excellentCount > 0 && onlineNodes.length > 0 && (
                 <div
                   className="bg-green-500 flex items-center justify-center text-[10px] font-bold text-black uppercase"
                   style={{ width: `${(excellentCount / onlineNodes.length) * 100}%` }}
@@ -455,7 +472,7 @@ export default function PerformancePage() {
                   {excellentCount > 2 && 'Excellent'}
                 </div>
               )}
-              {goodCount > 0 && (
+              {goodCount > 0 && onlineNodes.length > 0 && (
                 <div
                   className="bg-blue-500 flex items-center justify-center text-[10px] font-bold text-white uppercase"
                   style={{ width: `${(goodCount / onlineNodes.length) * 100}%` }}
@@ -463,7 +480,7 @@ export default function PerformancePage() {
                   {goodCount > 2 && 'Good'}
                 </div>
               )}
-              {fairCount > 0 && (
+              {fairCount > 0 && onlineNodes.length > 0 && (
                 <div
                   className="bg-yellow-500 flex items-center justify-center text-[10px] font-bold text-black uppercase"
                   style={{ width: `${(fairCount / onlineNodes.length) * 100}%` }}
@@ -471,7 +488,7 @@ export default function PerformancePage() {
                   {fairCount > 2 && 'Fair'}
                 </div>
               )}
-              {poorCount > 0 && (
+              {poorCount > 0 && onlineNodes.length > 0 && (
                 <div
                   className="bg-red-500 flex items-center justify-center text-[10px] font-bold text-white uppercase"
                   style={{ width: `${(poorCount / onlineNodes.length) * 100}%` }}
@@ -496,7 +513,7 @@ export default function PerformancePage() {
               { label: '> 200MS', min: 200, max: Infinity, color: 'bg-red-500' },
             ].map(({ label, min, max, color }) => {
               const count = onlineNodes.filter((n: PNode) =>
-                n.metrics.responseTimeMs >= min && n.metrics.responseTimeMs < max
+                (n.metrics?.responseTimeMs || 0) >= min && (n.metrics?.responseTimeMs || 0) < max
               ).length;
               const percentage = onlineNodes.length > 0 ? (count / onlineNodes.length) * 100 : 0;
 

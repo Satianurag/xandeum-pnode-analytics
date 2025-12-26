@@ -27,8 +27,8 @@ interface PulseEventProps {
 }
 
 function PulseEvent({ event }: PulseEventProps) {
-  const sourceId = event.sourceNodeId.replace('pnode_', '').slice(0, 4);
-  const targetId = event.targetNodeId.replace('pnode_', '').slice(0, 4);
+  const sourceId = (event.sourceNodeId || '').replace('pnode_', '').slice(0, 4) || '....';
+  const targetId = (event.targetNodeId || '').replace('pnode_', '').slice(0, 4) || '....';
 
   return (
     <span className="inline-flex items-center gap-1 whitespace-nowrap px-2 text-xs text-muted-foreground/70">
@@ -55,7 +55,7 @@ export function LiveNetworkPulse() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 h-6 bg-background/80 border-t border-border/30 backdrop-blur-sm z-50"
+      className="w-full h-6 bg-background/50 border-t border-border/30 backdrop-blur-sm mt-6 mb-8"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

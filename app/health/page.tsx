@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useMemo } from "react";
 import DashboardPageLayout from "@/components/dashboard/layout";
 import { useHealthScoreBreakdown, usePNodes, useNetworkStats, useSlashingEvents, usePeerRankings, useHealthTrends } from "@/hooks/use-pnode-data-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,6 +75,23 @@ export default function HealthScorePage() {
 
   const isLoading = healthLoading || nodesLoading || statsLoading;
 
+  const overallScore = healthBreakdown?.overall || 0;
+  const scoreGrade = overallScore >= 90 ? 'A+' : overallScore >= 80 ? 'A' : overallScore >= 70 ? 'B' : overallScore >= 60 ? 'C' : 'D';
+  const scoreIntent = overallScore >= 80 ? 'positive' : overallScore >= 60 ? 'neutral' : 'negative';
+
+  const radarData = useMemo(() => healthBreakdown?.factors.map((f: any) => ({
+    factor: f.name,
+    score: f.score,
+    fullMark: 100,
+  })) || [], [healthBreakdown]);
+
+  const factorData = useMemo(() => healthBreakdown?.factors.map((f: any) => ({
+    name: f.name,
+    score: f.score,
+    weight: f.weight * 100,
+    weighted: f.weightedScore,
+  })) || [], [healthBreakdown]);
+
   if (isLoading && !healthBreakdown) {
     return (
       <DashboardPageLayout header={{ title: "Health Score", description: "Loading...", icon: HeartPulseIcon }}>
@@ -81,23 +99,6 @@ export default function HealthScorePage() {
       </DashboardPageLayout>
     );
   }
-
-  const overallScore = healthBreakdown?.overall || 0;
-  const scoreGrade = overallScore >= 90 ? 'A+' : overallScore >= 80 ? 'A' : overallScore >= 70 ? 'B' : overallScore >= 60 ? 'C' : 'D';
-  const scoreIntent = overallScore >= 80 ? 'positive' : overallScore >= 60 ? 'neutral' : 'negative';
-
-  const radarData = healthBreakdown?.factors.map((f: any) => ({
-    factor: f.name,
-    score: f.score,
-    fullMark: 100,
-  })) || [];
-
-  const factorData = healthBreakdown?.factors.map((f: any) => ({
-    name: f.name,
-    score: f.score,
-    weight: f.weight * 100,
-    weighted: f.weightedScore,
-  })) || [];
 
   return (
     <DashboardPageLayout
@@ -157,7 +158,7 @@ export default function HealthScorePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <StatCard label="HEALTH FACTOR RADAR" icon={GlobeIcon}>
-          <div className="h-[350px] md:mt-4">
+          <div className="h-[350px] md:mt-4" style={{ height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid className="opacity-20" stroke="var(--border)" />
@@ -184,7 +185,7 @@ export default function HealthScorePage() {
         </StatCard>
 
         <StatCard label="FACTOR BREAKDOWN" icon={TrophyIcon}>
-          <div className="h-[350px] md:mt-4">
+          <div className="h-[350px] md:mt-4" style={{ height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={factorData} layout="vertical">
                 <defs>

@@ -159,7 +159,7 @@ export default function DecentralizationPage() {
       {/* Charts - using StatCard wrapper */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <StatCard label="GEOGRAPHIC DISTRIBUTION" icon={GlobeIcon}>
-          <div className="h-[280px] flex items-center">
+          <div className="h-[280px] flex items-center" style={{ height: 280 }}>
             <div className="w-1/2 h-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -200,15 +200,15 @@ export default function DecentralizationPage() {
         </StatCard>
 
         <StatCard label="ASN DISTRIBUTION" icon={ServerIcon} description="HOSTING PROVIDERS">
-          <div className="h-[280px]">
+          <div className="h-[280px]" style={{ height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={asnData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                <XAxis type="number" tick={{ fill: 'white', fontSize: 10 }} />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tick={{ fill: 'white', fontSize: 10 }}
                   width={80}
                 />
                 <Tooltip
@@ -217,10 +217,15 @@ export default function DecentralizationPage() {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                     fontSize: '12px',
+                    color: 'hsl(var(--popover-foreground))',
                   }}
                   formatter={(value) => [`${Number(value)} nodes (${((Number(value) / (nodes?.length || 1)) * 100).toFixed(1)}%)`]}
                 />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {asnData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

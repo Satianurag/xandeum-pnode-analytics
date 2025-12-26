@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import type { GossipHealth, StorageDistribution } from '@/types/pnode';
 import { cn } from '@/lib/utils';
 import { StatCard } from '@/components/dashboard/stat-card';
@@ -11,6 +13,10 @@ import DatabaseIcon from "@/components/icons/server";
 
 export function GossipHealthPanel({ health }: GossipHealthProps) {
   const healthIntent = health.healthScore >= 90 ? 'positive' : health.healthScore >= 70 ? 'neutral' : 'negative';
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <StatCard label="GOSSIP PROTOCOL HEALTH" icon={ActivityIcon}>
@@ -18,7 +24,7 @@ export function GossipHealthPanel({ health }: GossipHealthProps) {
         {/* Total Peers */}
         <div className="bg-card/40 p-4">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Total Peers</p>
-          <div className="text-2xl font-display">{health.totalPeers.toLocaleString()}</div>
+          <div className="text-2xl font-display">{mounted ? health.totalPeers.toLocaleString() : '---'}</div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1 flex items-center gap-1">
             <Bullet variant="default" className="size-1.5" />
             Connections
@@ -38,7 +44,7 @@ export function GossipHealthPanel({ health }: GossipHealthProps) {
         {/* Message Rate */}
         <div className="bg-card/40 p-4">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Message Rate</p>
-          <div className="text-2xl font-display">{health.messageRate.toLocaleString()}/s</div>
+          <div className="text-2xl font-display">{mounted ? health.messageRate.toLocaleString() : '---'}/s</div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1 flex items-center gap-1">
             <Bullet variant="default" className="size-1.5" />
             Msgs/sec

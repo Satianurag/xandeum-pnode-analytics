@@ -34,10 +34,13 @@ export default function AlertsPage() {
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [webhookResult, setWebhookResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     setConfigs(getAlertConfigs());
     setHistory(getAlertHistory());
     setLoading(false);
+    setMounted(true);
   }, []);
 
   const handleToggleConfig = (id: string, enabled: boolean) => {
@@ -168,7 +171,7 @@ export default function AlertsPage() {
                     </span>
                     {config.lastTriggered && (
                       <span className="text-xs text-muted-foreground">
-                        Last triggered: {new Date(config.lastTriggered).toLocaleDateString()}
+                        Last triggered: {mounted ? new Date(config.lastTriggered).toLocaleDateString() : '---'}
                       </span>
                     )}
                   </div>
@@ -287,7 +290,7 @@ export default function AlertsPage() {
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                      <span>{mounted ? new Date(alert.timestamp).toLocaleString() : '---'}</span>
                       {alert.nodePubkey && (
                         <span className="font-mono">{alert.nodePubkey.slice(0, 8)}...</span>
                       )}

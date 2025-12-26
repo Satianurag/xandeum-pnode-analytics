@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import ChartIcon from "@/components/icons/chart";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useTrendData } from "@/hooks/use-pnode-data-query";
@@ -45,6 +45,16 @@ export default function AnalyticsPage({
   const { data: stats, isLoading: statsLoading } = useNetworkStats(initialStats);
   const { data: history, isLoading: historyLoading } = usePerformanceHistory();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
+  // Fetch actual trend data
+  const { data: trend24h } = useTrendData('nodes', '24h');
+  const { data: trend7d } = useTrendData('storage', '7d');
+  const { data: trend30d } = useTrendData('nodes', '30d');
 
   const isLoading = nodesLoading || statsLoading || historyLoading;
 
@@ -62,44 +72,51 @@ export default function AnalyticsPage({
     gossip: h.gossipMessages / 1000,
   })) || [];
 
-  const nodeGrowthData = [
-    { period: 'Today', nodes: nodes?.length || 0 },
-    { period: '7d Ago', nodes: Math.floor((nodes?.length || 0) * 0.95) },
-    { period: '14d Ago', nodes: Math.floor((nodes?.length || 0) * 0.88) },
-    { period: '30d Ago', nodes: Math.floor((nodes?.length || 0) * 0.75) },
-  ].reverse();
+  // Use real history for node growth, fallback to current if empty
+  const nodeGrowthData = history && history.length > 0
+    ? history.map(h => ({
+      period: new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      nodes: h.onlineNodes
+    }))
+    : [{ period: 'Today', nodes: nodes?.length || 0 }];
+
+  // Calculate standard deviation of growth for projection (simple linear extrapolation for now)
+  const currentNodes = nodes?.length || 0;
+  const growthRate30d = trend30d?.changePercent ? (trend30d.changePercent / 100) : 0;
+  const projectedNodes = Math.floor(currentNodes * (1 + growthRate30d)); // Simple projection
 
   return (
     <DashboardPageLayout
       header={{
         title: "Analytics",
-        description: `Trends & projections • ${dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Loading...'}`,
+        description: `Trends & projections • ${mounted && dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Loading...'}`,
         icon: ChartIcon,
       }}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatBlock
           label="24h Growth"
-          value="+3.2%"
+          value={`${trend24h?.changePercent && trend24h.changePercent > 0 ? '+' : ''}${trend24h?.changePercent?.toFixed(1) || "0.0"}%`}
           description="node count"
-          variant="success"
+
+          variant={trend24h?.changePercent && trend24h.changePercent >= 0 ? "success" : "default"}
         />
         <StatBlock
           label="7d Growth"
-          value="+12.5%"
+          value={`${trend7d?.changePercent && trend7d.changePercent > 0 ? '+' : ''}${trend7d?.changePercent?.toFixed(1) || "0.0"}%`}
           description="storage capacity"
-          variant="success"
+          variant={trend7d?.changePercent && trend7d.changePercent >= 0 ? "success" : "default"}
         />
         <StatBlock
           label="30d Trend"
-          value="+28.7%"
+          value={`${trend30d?.changePercent && trend30d.changePercent > 0 ? '+' : ''}${trend30d?.changePercent?.toFixed(1) || "0.0"}%`}
           description="network expansion"
-          variant="primary"
+          variant={trend30d?.changePercent && trend30d.changePercent >= 0 ? "primary" : "default"}
         />
         <StatBlock
           label="Projection"
-          value={Math.floor((nodes?.length || 0) * 1.5)}
-          description="nodes by 60d"
+          value={projectedNodes}
+          description="nodes by 30d"
         />
       </div>
 
@@ -146,7 +163,7 @@ export default function AnalyticsPage({
               Storage Growth Trend
             </span>
           </div>
-          <div className="p-4 h-[250px]">
+          <div className="p-4 h-[250px]" style={{ height: 250 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={storageChartData}>
                 <defs>
@@ -187,7 +204,7 @@ export default function AnalyticsPage({
               Node Growth History
             </span>
           </div>
-          <div className="p-4 h-[250px]">
+          <div className="p-4 h-[250px]" style={{ height: 250 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={nodeGrowthData}>
                 <defs>

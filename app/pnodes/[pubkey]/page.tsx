@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useMemo } from 'react';
+import { use, useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import ServerIcon from "@/components/icons/server";
@@ -112,6 +112,12 @@ export default function NodeDetailPage({ params }: PageProps) {
         if (!nodes) return null;
         return nodes.find((n: PNode) => n.pubkey === pubkey);
     }, [nodes, pubkey]);
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
 
     const handleCopyPubkey = () => {
         navigator.clipboard.writeText(pubkey);
@@ -270,7 +276,7 @@ export default function NodeDetailPage({ params }: PageProps) {
                 />
                 <StatCard
                     label="CREDITS"
-                    value={node.credits?.toLocaleString() || 'N/A'}
+                    value={mounted ? (node.credits?.toLocaleString() || 'N/A') : '---'}
                     icon={TrendingUp}
                     intent="neutral"
                 />
@@ -339,7 +345,7 @@ export default function NodeDetailPage({ params }: PageProps) {
                         </div>
                         <div className="flex justify-between items-center text-xs uppercase tracking-tight">
                             <span className="text-muted-foreground">Last Seen</span>
-                            <span className="font-mono text-[10px] font-bold opacity-80">{new Date(node.lastSeen).toLocaleString()}</span>
+                            <span className="font-mono text-[10px] font-bold opacity-80">{mounted ? new Date(node.lastSeen).toLocaleString() : '---'}</span>
                         </div>
                     </div>
                 </StatCard>

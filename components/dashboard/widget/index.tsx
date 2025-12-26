@@ -10,6 +10,11 @@ import { useLiveClock, useNetworkStats } from "@/hooks/use-pnode-data-query";
 export default function Widget() {
   const { time, timezone } = useLiveClock();
   const { data: stats } = useNetworkStats();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const formatTime = (date: Date | null) => {
     if (!date) return "--:-- --";
@@ -44,12 +49,12 @@ export default function Widget() {
       <TVNoise opacity={0.3} intensity={0.2} speed={40} />
       <CardContent className="bg-accent/30 flex-1 flex flex-col justify-between text-sm font-medium uppercase relative z-20">
         <div className="flex justify-between items-center">
-          <span className="opacity-50">{dateInfo.dayOfWeek}</span>
-          <span>{dateInfo.restOfDate}</span>
+          <span className="opacity-50">{mounted ? dateInfo.dayOfWeek : '---'}</span>
+          <span>{mounted ? dateInfo.restOfDate : '---'}</span>
         </div>
         <div className="text-center">
           <div className="text-5xl font-display" suppressHydrationWarning>
-            {formatTime(time)}
+            {mounted ? formatTime(time) : '--:-- --'}
           </div>
         </div>
 

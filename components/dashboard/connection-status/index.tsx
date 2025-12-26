@@ -1,10 +1,17 @@
 'use client';
 
+import React from 'react';
+
 import { useConnectionStatus } from '@/hooks/use-pnode-data-query';
 import { cn } from '@/lib/utils';
 
 export function ConnectionStatus() {
   const { status, lastCheck } = useConnectionStatus();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const statusConfig = {
     connected: {
@@ -40,7 +47,7 @@ export function ConnectionStatus() {
       </span>
       {lastCheck && (
         <span className="text-muted-foreground/50">
-          {lastCheck.toLocaleTimeString()}
+          {mounted ? lastCheck.toLocaleTimeString() : '---'}
         </span>
       )}
     </div>

@@ -48,7 +48,7 @@ export function StatCard({
             <CardContent className={cn("bg-accent flex-1 pt-2 md:pt-6 overflow-clip relative", contentClassName)}>
                 {value !== undefined && (
                     <div className="flex items-center">
-                        <span className="text-4xl md:text-5xl font-display">
+                        <span className="text-4xl md:text-5xl font-display block leading-[1.5]">
                             {isNumeric && !label.includes('GRADE') ? (
                                 <NumberFlow value={numericValue} suffix={suffix} />
                             ) : (

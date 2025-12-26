@@ -1,315 +1,148 @@
-
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { PNode, NetworkStats, PerformanceHistory, GossipHealth, GossipEvent } from '@/types/pnode';
-import { useEffect } from 'react';
-import React from 'react';
+import { PNode, NetworkStats, PerformanceHistory, GossipHealth, GossipEvent, StorageDistribution, EpochInfo, EpochHistory, StakingStats, DecentralizationMetrics, VersionInfo, HealthScoreBreakdown, TrendData, ExabyteProjection, CommissionHistory, PeerRanking, SuperminorityInfo, CensorshipResistanceScore, XScore } from '@/types/pnode';
+import React, { useEffect, useState } from 'react';
+import { REFRESH_INTERVAL } from '@/lib/pnode-api';
 
-// Fetchers using Supabase
-const fetchPNodes = async (): Promise<PNode[]> => {
-    const { data, error } = await supabase
-        .from('pnodes')
-        .select('*')
-        .order('credits', { ascending: false });
-
-    if (error) throw error;
-    if (!data) return [];
-
-    // Map DB row to PNode type
-    return data.map((row: any) => ({
-        id: row.id,
-        pubkey: row.pubkey,
-        ip: row.ip,
-        port: row.port,
-        version: row.version,
-        status: row.status,
-        uptime: row.uptime,
-        lastSeen: row.last_seen,
-        location: row.location,
-        metrics: row.metrics,
-        performance: row.performance,
-        credits: row.credits,
-        creditsRank: row.credits_rank,
-        gossip: row.gossip,
-        staking: row.staking,
-        history: row.history
-    }));
-};
-
-const fetchNetworkStats = async (): Promise<NetworkStats | null> => {
-    const { data, error } = await supabase
-        .from('network_stats')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-    if (error) {
-        // If 0 rows, return null or default
-        return null;
+// Generic fetcher for unified API
+async function fetchApi<T>(params: string): Promise<T> {
+    const res = await fetch(`/api/pnode-data?${params}`);
+    if (!res.ok) {
+        throw new Error(`API Error: ${res.status}`);
     }
-
-    return {
-        totalNodes: data.total_nodes,
-        onlineNodes: data.online_nodes,
-        offlineNodes: data.offline_nodes,
-        degradedNodes: 0, // Not stored separately in stats table currently
-        totalStorageCapacityTB: data.total_storage_tb,
-        totalStorageUsedTB: data.total_storage_used_tb,
-        averageUptime: data.avg_uptime,
-        averageResponseTime: data.avg_response_time,
-        networkHealth: data.network_health,
-        gossipMessages24h: data.gossip_messages_24h_count,
-        lastUpdated: data.updated_at
-    };
-};
+    return res.json();
+}
 
 export function usePNodes(initialData?: any) {
-    const queryClient = useQueryClient();
-
-    // Realtime Subscription
-    useEffect(() => {
-        const channel = supabase
-            .channel('public:pnodes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'pnodes' }, () => {
-                queryClient.invalidateQueries({ queryKey: ['pnodes'] });
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [queryClient]);
-
     return useQuery({
         queryKey: ['pnodes'],
-        queryFn: fetchPNodes,
+        queryFn: () => fetchApi<PNode[]>('type=cluster-nodes'),
         initialData,
-        staleTime: 5 * 60 * 1000, // 5 minute cache
-        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+        staleTime: 60000,
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useNetworkStats(initialData?: any) {
-    const queryClient = useQueryClient();
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('public:network_stats')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'network_stats' }, () => {
-                queryClient.invalidateQueries({ queryKey: ['network-stats'] });
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [queryClient]);
-
     return useQuery({
         queryKey: ['network-stats'],
-        queryFn: fetchNetworkStats,
+        queryFn: () => fetchApi<NetworkStats>('type=network-stats'),
         initialData,
-        staleTime: 5 * 60 * 1000, // 5 minute cache
-        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+        staleTime: 60000,
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
-export function usePerformanceHistory() {
+export function usePerformanceHistory(period: '24h' | '7d' | '30d' = '24h') {
     return useQuery({
-        queryKey: ['performance-history'],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('network_stats')
-                .select('*')
-                .order('updated_at', { ascending: false })
-                .limit(24);
-
-            if (error || !data) return [];
-
-            return data.map((row: any) => ({
-                timestamp: row.updated_at,
-                avgResponseTime: row.avg_response_time,
-                totalNodes: row.total_nodes,
-                onlineNodes: row.online_nodes,
-                storageUsedTB: row.total_storage_used_tb,
-                gossipMessages: row.gossip_messages_24h_count
-            })).reverse();
-        },
-        refetchInterval: 300000,
+        queryKey: ['performance-history', period],
+        queryFn: () => fetchApi<PerformanceHistory[]>(`type=performance-history&period=${period}`),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
-// Generate gossip events from recent network activity
 export function useGossipEvents() {
     return useQuery({
         queryKey: ['gossip-events'],
-        queryFn: async (): Promise<GossipEvent[]> => {
-            // Generate events from real node data
-            const nodes = await fetchPNodes();
-            const onlineNodes = nodes.filter(n => n.status === 'online').slice(0, 10);
-
-            if (onlineNodes.length < 2) return [];
-
-            // Generate realistic gossip events between nodes
-            return onlineNodes.slice(0, 5).map((node, i) => {
-                const targetNode = onlineNodes[(i + 1) % onlineNodes.length];
-                const eventTypes: ('discovery' | 'message' | 'sync' | 'heartbeat' | 'data_transfer')[] =
-                    ['discovery', 'message', 'sync', 'heartbeat', 'data_transfer'];
-
-                return {
-                    id: `event-${node.pubkey.slice(0, 8)}-${i}`,
-                    type: eventTypes[i % eventTypes.length],
-                    sourceNodeId: node.pubkey,
-                    targetNodeId: targetNode.pubkey,
-                    sourceLocation: node.location ? { lat: node.location.lat, lng: node.location.lng } : undefined,
-                    targetLocation: targetNode.location ? { lat: targetNode.location.lat, lng: targetNode.location.lng } : undefined,
-                    timestamp: new Date(Date.now() - i * 60000).toISOString(),
-                    metadata: {
-                        bytesTransferred: Math.floor(Math.random() * 10000),
-                        latencyMs: node.metrics?.responseTimeMs || 50,
-                        protocol: 'gossip'
-                    }
-                };
-            });
-        },
+        queryFn: () => fetchApi<GossipEvent[]>('type=network-events'),
         refetchInterval: 60000,
     });
 }
 
-export function useXScore() {
-    // Calculate Score based on current stats
-    const { data: stats } = useNetworkStats();
-    const { data: gossipData } = useGossipHealth();
-
-    // Simple derivation logic
-    if (!stats) return { data: null };
-
-    const score = stats.networkHealth || 0;
-    const realGossipHealth = gossipData?.healthScore || score;
-
-    return {
-        data: {
-            overall: score,
-            storageThroughput: score * 0.9,
-            dataAvailabilityLatency: score * 0.95,
-            uptime: stats.averageUptime || 0,
-            gossipHealth: realGossipHealth,
-            grade: score > 90 ? 'S' : score > 80 ? 'A' : score > 60 ? 'B' : 'F'
-        }
-    };
+export function useGossipHealth() {
+    return useQuery({
+        queryKey: ['gossip-health'],
+        queryFn: () => fetchApi<GossipHealth>('type=gossip-health'),
+        staleTime: 60000,
+        refetchInterval: REFRESH_INTERVAL,
+    });
 }
 
-// -- Restored Hooks (returning safe empty/null for now to satisfy build) --
+export function useStorageDistribution() {
+    return useQuery({
+        queryKey: ['storage-distribution'],
+        queryFn: () => fetchApi<StorageDistribution[]>('type=storage-distribution'),
+        staleTime: 60000,
+        refetchInterval: REFRESH_INTERVAL,
+    });
+}
+
+export function useXScore(nodeId?: string) {
+    return useQuery({
+        queryKey: ['x-score', nodeId],
+        queryFn: () => fetchApi<XScore>(`type=x-score${nodeId ? `&nodeId=${nodeId}` : ''}`),
+        refetchInterval: REFRESH_INTERVAL,
+    });
+}
 
 export function useEpochInfo() {
     return useQuery({
         queryKey: ['epoch-info'],
-        queryFn: async () => null
+        queryFn: () => fetchApi<EpochInfo>('type=epoch-info'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useEpochHistory() {
     return useQuery({
         queryKey: ['epoch-history'],
-        queryFn: async () => []
+        queryFn: () => fetchApi<EpochHistory[]>('type=epoch-history'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useStakingStats() {
     return useQuery({
         queryKey: ['staking-stats'],
-        queryFn: async () => {
-            const response = await fetch('/api/staking-stats');
-            if (!response.ok) return null;
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<StakingStats>('type=staking-stats'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useDecentralizationMetrics() {
     return useQuery({
         queryKey: ['decentralization-metrics'],
-        queryFn: async () => {
-            const response = await fetch('/api/decentralization');
-            if (!response.ok) return null;
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<DecentralizationMetrics>('type=decentralization-metrics'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useVersionDistribution() {
     return useQuery({
         queryKey: ['version-distribution'],
-        queryFn: async () => {
-            const response = await fetch('/api/version-distribution');
-            if (!response.ok) return [];
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<VersionInfo[]>('type=version-distribution'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useHealthScoreBreakdown() {
     return useQuery({
         queryKey: ['health-score-breakdown'],
-        queryFn: async () => {
-            const response = await fetch('/api/health-score');
-            if (!response.ok) return null;
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<HealthScoreBreakdown>('type=health-score-breakdown'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useTrendData(metric: string, period: string) {
     return useQuery({
         queryKey: ['trend-data', metric, period],
-        queryFn: async () => {
-            const response = await fetch(`/api/trend-data?metric=${metric}&period=${period}`);
-            if (!response.ok) return [];
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<TrendData>(`type=trend-data&metric=${metric}&period=${period}`),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useExabyteProjection(timeframe: string, customNodeCount?: number) {
     return useQuery({
         queryKey: ['exabyte-projection', timeframe, customNodeCount],
-        queryFn: async () => []
+        queryFn: () => fetchApi<ExabyteProjection>(`type=exabyte-projection&timeframe=${timeframe}${customNodeCount ? `&customNodeCount=${customNodeCount}` : ''}`),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useCommissionHistory(nodeId: string) {
     return useQuery({
         queryKey: ['commission-history', nodeId],
-        queryFn: async () => {
-            // Fetch node's staking history from pnodes table
-            const { data, error } = await supabase
-                .from('pnodes')
-                .select('staking, history, updated_at')
-                .eq('pubkey', nodeId)
-                .single();
-
-            if (error || !data) return [];
-
-            // Parse history if available, or create from current data
-            const history = data.history?.commissionHistory || [];
-
-            // If no history, return current commission as single point
-            if (history.length === 0 && data.staking?.commission !== undefined) {
-                return [{
-                    timestamp: data.updated_at,
-                    commission: data.staking.commission
-                }];
-            }
-
-            return history;
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<CommissionHistory>(`type=commission-history&nodeId=${nodeId}`),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
@@ -317,153 +150,58 @@ export function useHealthTrends(period: string = '24h') {
     return useQuery({
         queryKey: ['health-trends', period],
         queryFn: async () => {
-            const response = await fetch(`/api/health-trends?period=${period}`);
-            if (!response.ok) return null;
-            return response.json();
+            const res = await fetch(`/api/health-trends?period=${period}`);
+            if (!res.ok) throw new Error('Failed to fetch health trends');
+            return res.json();
         },
-        refetchInterval: 300000,
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useSlashingEvents() {
     return useQuery({
         queryKey: ['slashing-events'],
-        queryFn: async () => {
-            // Check for nodes that recently went offline (potential slashing indicators)
-            const nodes = await fetchPNodes();
-            const offlineNodes = nodes.filter(n => n.status === 'offline');
-
-            // Generate events for recently offline nodes
-            return offlineNodes.slice(0, 5).map((node, i) => ({
-                id: `slash-${i}`,
-                pubkey: node.pubkey,
-                type: 'offline_detected',
-                timestamp: node.lastSeen || new Date().toISOString(),
-                amount: 0, // No actual slashing in Xandeum pNodes
-                reason: 'Node went offline',
-                severity: 'warning'
-            }));
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<any[]>('type=slashing-events'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function usePeerRankings() {
     return useQuery({
         queryKey: ['peer-rankings'],
-        queryFn: async () => {
-            const response = await fetch('/api/peer-rankings');
-            if (!response.ok) return [];
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<PeerRanking[]>('type=peer-rankings'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useSuperminorityInfo() {
     return useQuery({
         queryKey: ['superminority-info'],
-        queryFn: async () => {
-            const response = await fetch('/api/superminority');
-            if (!response.ok) return null;
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<SuperminorityInfo>('type=superminority-info'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
 
 export function useCensorshipResistanceScore() {
     return useQuery({
         queryKey: ['censorship-resistance-score'],
-        queryFn: async () => {
-            const response = await fetch('/api/censorship-resistance');
-            if (!response.ok) return null;
-            return response.json();
-        },
-        refetchInterval: 300000,
+        queryFn: () => fetchApi<CensorshipResistanceScore>('type=censorship-resistance'),
+        refetchInterval: REFRESH_INTERVAL,
     });
 }
-
-
-
-export function useGossipHealth() {
-    return useQuery({
-        queryKey: ['gossip-health'],
-        queryFn: async () => {
-            // Fetch real data to derive gossip health estimates
-            const [statsResult, nodesResult] = await Promise.all([
-                fetchNetworkStats(),
-                fetchPNodes()
-            ]);
-
-            const stats = statsResult;
-            const nodes = nodesResult || [];
-            const onlineNodes = nodes.filter(n => n.status === 'online');
-            const totalOnline = onlineNodes.length;
-
-            // Derive gossip health metrics from available data
-            return {
-                totalPeers: totalOnline * 8, // Estimate: each node peers with ~8 others on average
-                avgPeersPerNode: Math.min(totalOnline - 1, 50), // Max 50 peers per node
-                messageRate: totalOnline * 2, // Estimate: ~2 messages/sec per online node
-                networkLatency: stats?.averageResponseTime || 0, // REAL measured latency
-                partitions: 0, // We can't detect network partitions
-                healthScore: stats?.networkHealth || 0 // REAL health score
-            };
-        },
-        staleTime: 5 * 60 * 1000, // 5 minute cache
-    });
-}
-
-export function useStorageDistribution() {
-    return useQuery({
-        queryKey: ['storage-distribution'],
-        queryFn: async () => {
-            const nodes = await fetchPNodes();
-            if (!nodes || nodes.length === 0) return [];
-
-            // Group storage by geographic region
-            const regionStorage: Record<string, { used: number; capacity: number; count: number }> = {};
-
-            nodes.forEach(node => {
-                const region = node.location?.country || 'Unknown';
-                if (!regionStorage[region]) {
-                    regionStorage[region] = { used: 0, capacity: 0, count: 0 };
-                }
-                regionStorage[region].used += node.metrics?.storageUsedGB || 0;
-                regionStorage[region].capacity += node.metrics?.storageCapacityGB || 0;
-                regionStorage[region].count++;
-            });
-
-            // Convert to array and sort by capacity, return in correct format
-            return Object.entries(regionStorage)
-                .map(([region, data]) => ({
-                    region,
-                    nodeCount: data.count,
-                    storageCapacityTB: data.capacity / 1000, // Convert GB to TB
-                    storageUsedTB: data.used / 1000, // Convert GB to TB
-                    utilizationPercent: data.capacity > 0 ? (data.used / data.capacity) * 100 : 0
-                }))
-                .sort((a, b) => b.storageCapacityTB - a.storageCapacityTB)
-                .slice(0, 10); // Top 10 regions
-        },
-        staleTime: 5 * 60 * 1000, // 5 minute cache
-    });
-}
-
-
-
 
 export function useConnectionStatus() {
-    const { isLoading, isError, dataUpdatedAt } = useNetworkStats();
+    const { isLoading, isError, data, dataUpdatedAt } = useNetworkStats();
+
+    // If we have data, we are connected, even if we are currently refetching.
+    // Transition to 'connected' as soon as data arrives or loading completes.
+    const isActuallyConnecting = isLoading && !data;
 
     return {
-        status: isLoading ? 'connecting' : isError ? 'disconnected' : 'connected',
+        status: isActuallyConnecting ? 'connecting' : (isError && !data) ? 'disconnected' : 'connected',
         lastCheck: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
     };
 }
-
-// Legacy/UI Utils
 
 export function useUserTimezone() {
     const [mounted, setMounted] = React.useState(false);

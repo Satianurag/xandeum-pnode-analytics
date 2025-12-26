@@ -52,6 +52,11 @@ export default function PNodesPage({ initialNodes }: { initialNodes: PNode[] | n
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Filter and sort nodes
   const displayNodes = useMemo(() => {
     if (!nodes) return [];
@@ -257,7 +262,7 @@ export default function PNodesPage({ initialNodes }: { initialNodes: PNode[] | n
                 {/* Credits */}
                 <div className="col-span-1">
                   <Badge variant={isFeatured ? "default" : "secondary"} className="font-mono">
-                    {(node.credits || 0).toLocaleString()}
+                    {mounted ? (node.credits || 0).toLocaleString() : '---'}
                   </Badge>
                 </div>
 

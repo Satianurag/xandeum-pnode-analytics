@@ -21,7 +21,17 @@ export async function getDecentralizationMetrics(): Promise<DecentralizationMetr
             }
             if (node.location.asn) {
                 const asn = node.location.asn;
-                const provider = ASNS.find(a => a.asn === asn)?.provider || 'Unknown';
+                let provider = ASNS.find(a => a.asn === asn)?.provider;
+
+                // If not in our curated list, fallback to dynamic datacenter/org name or ASN code
+                if (!provider) {
+                    if (node.location.datacenter && node.location.datacenter !== 'Unknown') {
+                        provider = node.location.datacenter;
+                    } else {
+                        provider = asn;
+                    }
+                }
+
                 if (!asnCount[asn]) asnCount[asn] = { provider, count: 0 };
                 asnCount[asn].count++;
             }
@@ -327,4 +337,154 @@ function calculateVersionConsistency(nodes: PNode[]): number {
 
     const maxCount = Math.max(...versionCounts.values());
     return (maxCount / nodes.length) * 100;
+}
+
+/**
+ * Calculate XScore for network or individual node
+ * Dynamic calculation based on real metrics
+ */
+export async function getXScore(nodeId?: string): Promise<import('@/types/pnode').XScore> {
+    const nodes = await getClusterNodes();
+
+    if (nodeId) {
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) {
+            return calculateNodeXScore(node);
+        }
+    }
+
+    const onlineNodes = nodes.filter(n => n.status === 'online');
+    if (onlineNodes.length === 0) {
+        return { overall: 0, storageThroughput: 0, dataAvailabilityLatency: 0, uptime: 0, gossipHealth: 0, peerConnectivity: 0, grade: 'F' };
+    }
+
+    const avgThroughput = onlineNodes.reduce((acc, n) =>
+        acc + (n.metrics.storageCapacityGB > 0 ? (n.metrics.storageUsedGB / n.metrics.storageCapacityGB * 100) : 0), 0) / onlineNodes.length;
+    const avgLatency = onlineNodes.reduce((acc, n) => acc + n.metrics.responseTimeMs, 0) / onlineNodes.length;
+    const avgCreditsScore = onlineNodes.reduce((acc, n) => acc + n.performance.score, 0) / onlineNodes.length;
+    const avgPeers = onlineNodes.reduce((acc, n) => acc + n.gossip.peersConnected, 0) / onlineNodes.length;
+
+    const storageThroughput = Math.min(100, avgThroughput * 1.5);
+    const dataAvailabilityLatency = Math.max(0, 100 - avgLatency * 0.5);
+    const uptime = avgCreditsScore; // Use credits-based score as uptime proxy
+    const gossipHealth = Math.min(100, avgPeers * 2);
+    const peerConnectivity = Math.min(100, avgPeers * 3);
+
+    const overall = (storageThroughput * 0.25) + (dataAvailabilityLatency * 0.25) + (uptime * 0.20) + (gossipHealth * 0.15) + (peerConnectivity * 0.15);
+
+    return {
+        overall,
+        storageThroughput,
+        dataAvailabilityLatency,
+        uptime,
+        gossipHealth,
+        peerConnectivity,
+        grade: getXScoreGrade(overall),
+    };
+}
+
+function calculateNodeXScore(node: PNode): import('@/types/pnode').XScore {
+    const storageThroughput = node.metrics.storageCapacityGB > 0
+        ? Math.min(100, (node.metrics.storageUsedGB / node.metrics.storageCapacityGB * 100) * 1.5)
+        : 0;
+    const dataAvailabilityLatency = Math.max(0, 100 - node.metrics.responseTimeMs * 0.5);
+    const uptime = node.performance.score;
+    const gossipHealth = Math.min(100, node.gossip.peersConnected * 2);
+    const peerConnectivity = Math.min(100, node.gossip.peersConnected * 3);
+
+    const overall = (storageThroughput * 0.25) + (dataAvailabilityLatency * 0.25) + (uptime * 0.20) + (gossipHealth * 0.15) + (peerConnectivity * 0.15);
+
+    return {
+        overall,
+        storageThroughput,
+        dataAvailabilityLatency,
+        uptime,
+        gossipHealth,
+        peerConnectivity,
+        grade: getXScoreGrade(overall),
+    };
+}
+
+function getXScoreGrade(score: number): 'S' | 'A' | 'B' | 'C' | 'D' | 'F' {
+    if (score >= 95) return 'S';
+    if (score >= 85) return 'A';
+    if (score >= 70) return 'B';
+    if (score >= 55) return 'C';
+    if (score >= 40) return 'D';
+    return 'F';
+}
+
+/**
+ * Generate gossip events from node data
+ * Creates a simulated event stream based on real node connections
+ */
+export function generateGossipEvents(nodes: PNode[]): import('@/types/pnode').GossipEvent[] {
+    const events: import('@/types/pnode').GossipEvent[] = [];
+    const onlineNodes = nodes.filter(n => n.status === 'online' && n.location);
+    const eventTypes: Array<'discovery' | 'message' | 'sync' | 'heartbeat' | 'data_transfer'> =
+        ['discovery', 'message', 'sync', 'heartbeat', 'data_transfer'];
+
+    for (let i = 0; i < Math.min(20, onlineNodes.length); i++) {
+        const sourceIdx = i % onlineNodes.length;
+        const targetIdx = (i + 1) % onlineNodes.length;
+        const source = onlineNodes[sourceIdx];
+        const target = onlineNodes[targetIdx];
+
+        if (source && target && source.id !== target.id) {
+            events.push({
+                id: `gossip_${Date.now()}_${i}`,
+                type: eventTypes[i % eventTypes.length],
+                sourceNodeId: source.id,
+                targetNodeId: target.id,
+                sourceLocation: source.location ? { lat: source.location.lat, lng: source.location.lng } : undefined,
+                targetLocation: target.location ? { lat: target.location.lat, lng: target.location.lng } : undefined,
+                timestamp: new Date(Date.now() - i * 1000).toISOString(),
+                metadata: {
+                    bytesTransferred: (source.credits || 1000) * 10,
+                    latencyMs: source.metrics.responseTimeMs,
+                    protocol: 'gossip/v1',
+                },
+            });
+        }
+    }
+
+    return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+/**
+ * Get trend data for a specific metric over time
+ */
+export async function getTrendData(
+    metric: string,
+    period: '24h' | '7d' | '30d' = '24h'
+): Promise<import('@/types/pnode').TrendData> {
+    const { getPerformanceHistory } = await import('./network');
+    const history = await getPerformanceHistory(period);
+
+    const getValue = (h: any): number => {
+        switch (metric) {
+            case 'nodes': return h.totalNodes;
+            case 'latency': return h.avgResponseTime;
+            case 'storage': return h.storageUsedTB;
+            case 'gossip': return h.gossipMessages;
+            default: return h.totalNodes;
+        }
+    };
+
+    const dataPoints = history.map(h => ({
+        timestamp: h.timestamp,
+        value: getValue(h),
+    }));
+
+    const first = dataPoints[0]?.value || 0;
+    const last = dataPoints[dataPoints.length - 1]?.value || 0;
+    const change = last - first;
+    const changePercent = first > 0 ? (change / first) * 100 : 0;
+
+    return {
+        period,
+        dataPoints,
+        change,
+        changePercent,
+    };
 }

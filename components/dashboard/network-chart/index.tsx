@@ -36,6 +36,11 @@ interface NetworkChartProps {
 
 export function NetworkChart({ data }: NetworkChartProps) {
   const [activeTab, setActiveTab] = React.useState<TimePeriod>("24h");
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleTabChange = (value: string) => {
     if (value === "1h" || value === "6h" || value === "24h") {
@@ -52,7 +57,7 @@ export function NetworkChart({ data }: NetworkChartProps) {
     return data
       .filter(item => new Date(item.timestamp).getTime() > cutoff)
       .map(item => ({
-        date: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: mounted ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         nodes: item.onlineNodes,
         latency: item.avgResponseTime,
         storage: item.storageUsedTB,

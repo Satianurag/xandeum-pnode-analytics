@@ -62,10 +62,11 @@ function ChartContainer({
           data-slot="chart"
           data-chart={chartId}
           className={cn(
-            "flex aspect-video justify-center text-xs w-full items-center bg-accent/5 rounded-lg border border-border/50",
-            className
+            "flex aspect-video justify-center text-xs w-full items-center bg-accent/5 rounded-lg border border-border/50 transition-opacity duration-300",
+            className,
+            !mounted && "opacity-0"
           )}
-          style={{ minHeight: "300px" }}
+          style={{ minHeight: "350px" }}
           {...props}
         >
           <div className="text-muted-foreground animate-pulse">Initializing chart...</div>
@@ -80,10 +81,10 @@ function ChartContainer({
         data-slot="chart"
         data-chart={chartId}
         className={cn(
-          "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden w-full",
+          "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden w-full transition-opacity duration-500",
           className
         )}
-        style={{ minHeight: "300px" }}
+        style={{ minHeight: "350px" }}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />

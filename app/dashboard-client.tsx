@@ -5,7 +5,7 @@ import DashboardPageLayout from "@/components/dashboard/layout";
 import { Bullet } from "@/components/ui/bullet";
 import BracketsIcon from "@/components/icons/brackets";
 import GearIcon from "@/components/icons/gear";
-import ProcessorIcon from "@/components/icons/proccesor";
+import ProcessorIcon from "@/components/icons/processor";
 import BoomIcon from "@/components/icons/boom";
 import TrophyIcon from "@/components/icons/trophy";
 import ServerIcon from "@/components/icons/server";
@@ -19,6 +19,8 @@ import { InfoTooltip } from "@/components/dashboard/info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { LeafletMap } from "@/components/dashboard/leaflet-map";
+import { LiveNetworkPulse } from "@/components/dashboard/live-pulse";
+
 
 function LoadingState() {
   return (
@@ -47,11 +49,13 @@ export default function DashboardOverview({
   const { data: gossipEvents } = useGossipEvents();
   const { data: xScore } = useXScore();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   const isLoading = nodesLoading || statsLoading || historyLoading;
-
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   const lastUpdatedText = mounted && dataUpdatedAt
     ? `Last updated ${new Date(dataUpdatedAt).toLocaleTimeString()}`
@@ -154,7 +158,7 @@ export default function DashboardOverview({
       <StatCard
         label="NETWORK PERFORMANCE (24H)"
         icon={BoomIcon}
-        description={`${stats?.gossipMessages24h.toLocaleString()} GOSSIP MESSAGES`}
+        description={`${mounted && stats?.gossipMessages24h ? stats.gossipMessages24h.toLocaleString() : '---'} GOSSIP MESSAGES`}
         className="mb-6"
       >
         <div className="p-0 md:mt-4">
@@ -163,6 +167,7 @@ export default function DashboardOverview({
       </StatCard>
 
       {/* Top Performing pNodes removed as requested */}
+      <LiveNetworkPulse />
     </DashboardPageLayout>
   );
 }

@@ -4,6 +4,7 @@ import { FC, ReactNode, useMemo, useCallback, createContext, useContext, useStat
 import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Adapter } from '@solana/wallet-adapter-base';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { DEVNET_RPC } from '@/server/api/config';
 
 interface WalletContextState {
   connected: boolean;
@@ -86,7 +87,7 @@ interface WalletContextProviderProps {
 }
 
 export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children }) => {
-  const endpoint = useMemo(() => 'https://api.devnet.xandeum.com:8899', []);
+  const endpoint = useMemo(() => DEVNET_RPC, []);
   // The instruction snippet included a line for useEffect here, but it refers to state/props not defined in this component.
   // As per the instructions to make changes faithfully and without unrelated edits, and to maintain syntactical correctness,
   // this line is omitted as it would cause errors in this context.

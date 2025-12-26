@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
+
 import GlobeIcon from "@/components/icons/globe";
 import { usePNodes, useGossipHealth, useStorageDistribution } from "@/hooks/use-pnode-data-query";
 import type { PNode } from "@/types/pnode";
@@ -41,6 +43,12 @@ export default function NetworkPage() {
   const { data: gossipHealth, isLoading: gossipLoading } = useGossipHealth();
   const { data: distribution, isLoading: distLoading } = useStorageDistribution();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
   const isLoading = nodesLoading || gossipLoading || distLoading;
 
   if (isLoading && !nodes) {
@@ -52,7 +60,7 @@ export default function NetworkPage() {
   }
 
   const onlineNodesCount = nodes?.filter((n: any) => n.status === 'online').length || 0;
-  const avgPeers = nodes?.length ? nodes.reduce((acc: number, n: any) => acc + (n.peers?.length || 0), 0) / nodes.length : 0;
+  const avgPeers = nodes?.length ? nodes.reduce((acc: number, n: any) => acc + (n.gossip?.peersConnected || 0), 0) / nodes.length : 0;
 
   const totalMessages = nodes?.reduce((acc: number, n: any) => acc + (n.gossip?.messagesReceived || 0) + (n.gossip?.messagesSent || 0), 0) || 0;
   const networkLatency = nodes?.length ? nodes.reduce((acc: number, n: any) => acc + (n.latency || 0), 0) / nodes.length : 0;
@@ -61,7 +69,7 @@ export default function NetworkPage() {
     <DashboardPageLayout
       header={{
         title: "Topology",
-        description: `Gossip network • ${dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Connecting...'}`,
+        description: `Gossip network • ${mounted && dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : 'Connecting...'}`,
         icon: GlobeIcon,
       }}
     >

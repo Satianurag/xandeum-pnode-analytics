@@ -1,4 +1,5 @@
 import { CACHE_DURATION, DEVNET_RPC } from './config';
+import { BlockProductionResponse, PerformanceSample } from '@/infrastructure/rpc/types';
 
 interface CacheEntry<T> {
     data: T;
@@ -51,11 +52,12 @@ export async function fetchRPC<T>(method: string, params: unknown[] = []): Promi
     }
 }
 
-export async function fetchBlockProduction(): Promise<import('./types').BlockProductionResponse | null> {
-    return fetchRPC<import('./types').BlockProductionResponse>('getBlockProduction');
+export async function fetchBlockProduction(): Promise<BlockProductionResponse | null> {
+    return fetchRPC<BlockProductionResponse>('getBlockProduction');
 }
 
-export async function fetchPerformanceSamples(limit: number = 10): Promise<import('./types').PerformanceSample[]> {
-    const result = await fetchRPC<import('./types').PerformanceSample[]>('getPerformanceSamples', [limit]);
+export async function fetchPerformanceSamples(limit: number = 10): Promise<PerformanceSample[]> {
+    const result = await fetchRPC<PerformanceSample[]>('getPerformanceSamples', [limit]);
     return result || [];
 }
+

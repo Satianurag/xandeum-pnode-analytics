@@ -1,4 +1,4 @@
-import { CACHE_DURATION, DEVNET_RPC } from '@/config/api';
+import { CACHE_DURATION, DEVNET_RPC } from '@/server/api/config';
 import { BlockProductionResponse, PerformanceSample } from './types';
 
 interface CacheEntry<T> {

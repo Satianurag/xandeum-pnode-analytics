@@ -2,7 +2,7 @@ import { PNode, NetworkStats, NetworkEvent, PerformanceHistory, GossipHealth, St
 
 // Client-side utils
 export * from './pnode-utils-client';
-export const REFRESH_INTERVAL = 30000;
+export const REFRESH_INTERVAL = 300000;
 
 async function fetchApi<T>(url: string): Promise<T> {
     const res = await fetch(url);
