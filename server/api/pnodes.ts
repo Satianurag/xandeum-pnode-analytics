@@ -301,7 +301,7 @@ export async function ingestNodeData() {
         const uniqueNodes = Array.from(new Map(pnodes.map(item => [item.pubkey, item])).values());
 
         // 4. Calculate Ranks
-        uniqueNodes.sort((a, b) => b.credits - a.credits);
+        uniqueNodes.sort((a, b) => (b.credits || 0) - (a.credits || 0));
         uniqueNodes.forEach((node, index) => {
             node.creditsRank = index + 1;
         });
@@ -405,13 +405,14 @@ export async function ingestNodeData() {
                         timestamp: new Date().toISOString()
                     }));
 
-                    await supabase.from('notifications').upsert(
+                    const { error } = await supabase.from('notifications').upsert(
                         notifications,
                         { onConflict: 'node_pubkey', ignoreDuplicates: true }
-                    ).catch(err => {
-                        // Notifications table might not exist yet, that's okay
-                        console.log('Notifications table not ready:', err.message);
-                    });
+                    );
+
+                    if (error) {
+                        console.log('Notifications upsert error:', error.message);
+                    }
                 }
             } catch (notifyErr) {
                 console.log('Notification generation skipped:', notifyErr);

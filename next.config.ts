@@ -49,13 +49,20 @@ const nextConfig: NextConfig = {
   },
 
   // Turbopack configuration (Next.js 16+)
-  turbopack: {
-    resolveAlias: {
-      // Map Node.js modules to empty objects in browser
-      'fs': { 'browser': {} },
-      'net': { 'browser': {} },
-      'tls': { 'browser': {} },
-    },
+  // We provide an empty config to silence the warning about having webpack config
+  turbopack: {},
+
+  // Webpack fallback for production
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
   },
 }
 
