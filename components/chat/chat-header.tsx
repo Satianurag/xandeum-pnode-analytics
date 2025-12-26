@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useChatState } from "./use-chat-state";
 import { ChatStatusIndicator } from "./chat-status-indicator";
@@ -12,6 +13,8 @@ import MinusIcon from "../icons/minus";
 import ArrowLeftIcon from "../icons/arrow-left";
 import { useIsV0 } from "@/lib/v0-context";
 import { getCurrentUser } from "@/lib/chat-utils";
+import { useWalletState } from "@/contexts/wallet-context";
+import { verifyNodeOperator, truncateAddress, type OperatorVerification } from "@/lib/verify-operator";
 
 interface ChatHeaderProps {
   onClick?: () => void;
@@ -38,6 +41,17 @@ export function ChatHeader({
 
   const isV0 = useIsV0();
   const currentUser = getCurrentUser();
+  const { connected, publicKey } = useWalletState();
+  const [operatorStatus, setOperatorStatus] = useState<OperatorVerification>({ isOperator: false });
+
+  // Verify if connected wallet is a node operator
+  useEffect(() => {
+    if (connected && publicKey) {
+      verifyNodeOperator(publicKey).then(setOperatorStatus);
+    } else {
+      setOperatorStatus({ isOperator: false });
+    }
+  }, [connected, publicKey]);
 
   const hasNewMessages = totalUnreadCount > 0;
   const shouldHighlightUnreadMessages =
@@ -143,6 +157,22 @@ export function ChatHeader({
             return "ONLINE";
           })()}
         </span>
+
+        {/* Wallet Verification Badge - Show when expanded and connected */}
+        {variant === "desktop" && chatState.state !== "collapsed" && connected && publicKey && (
+          <Badge
+            variant={operatorStatus.isOperator ? "default" : "secondary"}
+            className={cn(
+              "ml-auto text-[10px] font-mono",
+              operatorStatus.isOperator
+                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            {operatorStatus.isOperator ? "✓ " : "👤 "}
+            {truncateAddress(publicKey)}
+          </Badge>
+        )}
       </motion.div>
 
       {/* Action Buttons */}

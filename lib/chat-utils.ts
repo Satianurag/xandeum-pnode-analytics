@@ -1,13 +1,33 @@
 import type { ChatConversation, ChatMessage, ChatUser } from "@/types/chat";
+import { truncateAddress } from "./verify-operator";
 
-
-export const getCurrentUser = (): ChatUser => ({
-    id: "joyboy", // Fixed user for this demo
+// Default user for demo/testing when no wallet connected
+const DEFAULT_USER: ChatUser = {
+    id: "joyboy",
     name: "JOYBOY",
     username: "@JOYBOY",
     avatar: "/avatars/user_joyboy.png",
     isOnline: true,
-});
+};
+
+// Get current user - uses default for backwards compatibility
+export const getCurrentUser = (): ChatUser => DEFAULT_USER;
+
+// Get user based on connected wallet
+export const getConnectedUser = (walletPubkey: string | null): ChatUser => {
+    if (!walletPubkey) {
+        return DEFAULT_USER;
+    }
+
+    const truncated = truncateAddress(walletPubkey, 4);
+    return {
+        id: walletPubkey,
+        name: truncated.toUpperCase(),
+        username: `@${truncated}`,
+        avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${walletPubkey}`,
+        isOnline: true,
+    };
+};
 
 export const mapProfileToChatUser = (profile: any): ChatUser => ({
     id: profile.id,
