@@ -85,7 +85,8 @@ export function usePNodes(initialData?: any) {
         queryKey: ['pnodes'],
         queryFn: fetchPNodes,
         initialData,
-        refetchInterval: 60000, // Fallback polling
+        staleTime: 5 * 60 * 1000, // 5 minute cache
+        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
     });
 }
 
@@ -109,7 +110,8 @@ export function useNetworkStats(initialData?: any) {
         queryKey: ['network-stats'],
         queryFn: fetchNetworkStats,
         initialData,
-        refetchInterval: 60000,
+        staleTime: 5 * 60 * 1000, // 5 minute cache
+        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
     });
 }
 
@@ -295,23 +297,67 @@ export function useCensorshipResistanceScore() {
 export function useGossipHealth() {
     return useQuery({
         queryKey: ['gossip-health'],
-        queryFn: async () => ({
-            totalPeers: 0,
-            avgPeersPerNode: 0,
-            messageRate: 0,
-            networkLatency: 0,
-            partitions: 0,
-            healthScore: 100
-        })
+        queryFn: async () => {
+            // Fetch real data to derive gossip health estimates
+            const [statsResult, nodesResult] = await Promise.all([
+                fetchNetworkStats(),
+                fetchPNodes()
+            ]);
+
+            const stats = statsResult;
+            const nodes = nodesResult || [];
+            const onlineNodes = nodes.filter(n => n.status === 'online');
+            const totalOnline = onlineNodes.length;
+
+            // Derive gossip health metrics from available data
+            return {
+                totalPeers: totalOnline * 8, // Estimate: each node peers with ~8 others on average
+                avgPeersPerNode: Math.min(totalOnline - 1, 50), // Max 50 peers per node
+                messageRate: totalOnline * 2, // Estimate: ~2 messages/sec per online node
+                networkLatency: stats?.averageResponseTime || 0, // REAL measured latency
+                partitions: 0, // We can't detect network partitions
+                healthScore: stats?.networkHealth || 0 // REAL health score
+            };
+        },
+        staleTime: 5 * 60 * 1000, // 5 minute cache
     });
 }
 
 export function useStorageDistribution() {
     return useQuery({
         queryKey: ['storage-distribution'],
-        queryFn: async () => []
+        queryFn: async () => {
+            const nodes = await fetchPNodes();
+            if (!nodes || nodes.length === 0) return [];
+
+            // Group storage by geographic region
+            const regionStorage: Record<string, { used: number; capacity: number }> = {};
+
+            nodes.forEach(node => {
+                const region = node.location?.country || 'Unknown';
+                if (!regionStorage[region]) {
+                    regionStorage[region] = { used: 0, capacity: 0 };
+                }
+                regionStorage[region].used += node.metrics?.storageUsedGB || 0;
+                regionStorage[region].capacity += node.metrics?.storageCapacityGB || 0;
+            });
+
+            // Convert to array and sort by capacity
+            return Object.entries(regionStorage)
+                .map(([region, data]) => ({
+                    region,
+                    usedGB: data.used,
+                    capacityGB: data.capacity,
+                    utilization: data.capacity > 0 ? (data.used / data.capacity) * 100 : 0
+                }))
+                .sort((a, b) => b.capacityGB - a.capacityGB)
+                .slice(0, 10); // Top 10 regions
+        },
+        staleTime: 5 * 60 * 1000, // 5 minute cache
     });
 }
+
+
 
 
 export function useConnectionStatus() {

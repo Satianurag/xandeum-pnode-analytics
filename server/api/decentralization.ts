@@ -187,3 +187,144 @@ export async function getCensorshipResistanceScore(): Promise<CensorshipResistan
         grade,
     };
 }
+
+/**
+ * Get peer rankings based on performance score (derived from credits)
+ * Used by the Health page leaderboard
+ */
+export async function getPeerRankings(): Promise<PeerRanking[]> {
+    const nodes = await getClusterNodes();
+    const totalNodes = nodes.length;
+
+    // Nodes are already sorted by credits in getClusterNodes
+    return nodes.slice(0, 20).map((node, i) => ({
+        nodeId: node.id,
+        nodePubkey: node.pubkey,
+        rank: node.creditsRank || i + 1,
+        totalNodes,
+        percentile: totalNodes > 0 ? ((totalNodes - (node.creditsRank || i + 1)) / totalNodes) * 100 : 0,
+        xScore: node.performance.score,
+        trend: 'stable' as const, // Would need historical data to calculate real trend
+        trendChange: 0,
+    }));
+}
+
+/**
+ * Get superminority information - entities that control 33%+ of stake (using credits as proxy)
+ * Used by Decentralization page
+ */
+export async function getSuperminorityInfo(): Promise<SuperminorityInfo> {
+    const nodes = await getClusterNodes();
+    const totalCredits = nodes.reduce((acc, n) => acc + (n.credits || 0), 0);
+
+    // Already sorted by credits (descending) from getClusterNodes
+    const superminority: { pubkey: string; stake: number; percentage: number }[] = [];
+    let cumulative = 0;
+
+    for (const node of nodes) {
+        const nodeCredits = node.credits || 0;
+        cumulative += nodeCredits;
+        superminority.push({
+            pubkey: node.pubkey,
+            stake: nodeCredits,
+            percentage: totalCredits > 0 ? (nodeCredits / totalCredits) * 100 : 0,
+        });
+        // Stop when we've accumulated 33% of total credits
+        if (totalCredits > 0 && cumulative / totalCredits >= 0.33) break;
+    }
+
+    return {
+        count: superminority.length,
+        threshold: 33,
+        nodes: superminority,
+        riskLevel: superminority.length < 5 ? 'high' : superminority.length < 10 ? 'medium' : 'low',
+    };
+}
+
+/**
+ * Get health score breakdown with weighted factors
+ * Used by Health page radar chart and factor cards
+ */
+export async function getHealthScoreBreakdown(): Promise<HealthScoreBreakdown> {
+    const nodes = await getClusterNodes();
+    const stats = await getNetworkStats();
+
+    // Factor 1: Online Rate (from network stats)
+    const onlineRate = stats.networkHealth || 0;
+
+    // Factor 2: Average Performance Score (from credits-based calculation)
+    const avgCreditsScore = nodes.length > 0
+        ? nodes.reduce((a, n) => a + n.performance.score, 0) / nodes.length
+        : 0;
+
+    // Factor 3: Storage Utilization (how much of capacity is being used)
+    const storageUtil = stats.totalStorageCapacityTB > 0
+        ? Math.min((stats.totalStorageUsedTB / stats.totalStorageCapacityTB) * 100, 100)
+        : 0;
+
+    // Factor 4: Version Consistency (what % are on the same version)
+    const versionConsistency = calculateVersionConsistency(nodes);
+
+    // Factor 5: Response Time Score (inverse of latency)
+    const avgLatency = stats.averageResponseTime || 0;
+    const latencyScore = avgLatency > 0 ? Math.max(0, 100 - (avgLatency / 30)) : 50; // <30ms = 100%, >3000ms = 0%
+
+    const factors = [
+        {
+            name: 'Online Rate',
+            weight: 0.30,
+            score: onlineRate,
+            weightedScore: onlineRate * 0.30,
+            description: 'Percentage of nodes currently online and responsive'
+        },
+        {
+            name: 'Avg Performance',
+            weight: 0.25,
+            score: avgCreditsScore,
+            weightedScore: avgCreditsScore * 0.25,
+            description: 'Average credits-based performance score across all nodes'
+        },
+        {
+            name: 'Storage Health',
+            weight: 0.15,
+            score: storageUtil > 0 ? storageUtil : 50,
+            weightedScore: (storageUtil > 0 ? storageUtil : 50) * 0.15,
+            description: 'Network storage utilization efficiency'
+        },
+        {
+            name: 'Version Consistency',
+            weight: 0.15,
+            score: versionConsistency,
+            weightedScore: versionConsistency * 0.15,
+            description: 'Percentage of nodes running consistent software versions'
+        },
+        {
+            name: 'Response Time',
+            weight: 0.15,
+            score: latencyScore,
+            weightedScore: latencyScore * 0.15,
+            description: 'Network-wide average response latency performance'
+        },
+    ];
+
+    return {
+        overall: factors.reduce((sum, f) => sum + f.weightedScore, 0),
+        factors,
+    };
+}
+
+/**
+ * Helper: Calculate version consistency (what % are on the most common version)
+ */
+function calculateVersionConsistency(nodes: PNode[]): number {
+    if (nodes.length === 0) return 0;
+
+    const versionCounts = new Map<string, number>();
+    nodes.forEach(n => {
+        const v = n.version || 'Unknown';
+        versionCounts.set(v, (versionCounts.get(v) || 0) + 1);
+    });
+
+    const maxCount = Math.max(...versionCounts.values());
+    return (maxCount / nodes.length) * 100;
+}

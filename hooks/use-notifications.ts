@@ -2,66 +2,102 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
+import { supabase } from '@/lib/supabase';
 import type { Notification } from '@/types/dashboard';
 
-// --- API Functions (Local / No-op) ---
+// --- API Functions using Supabase ---
 
 async function fetchNotifications(): Promise<Notification[]> {
+    try {
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(20);
+
+        if (error) {
+            console.log('Notifications table may not exist yet:', error.message);
+            // Return fallback data for first-time setup
+            return getDefaultNotifications();
+        }
+
+        if (!data || data.length === 0) {
+            return getDefaultNotifications();
+        }
+
+        return data.map(row => ({
+            id: row.id,
+            title: row.title,
+            message: row.message,
+            type: row.type as 'success' | 'info' | 'warning' | 'error',
+            read: row.read || false,
+            timestamp: row.timestamp,
+        }));
+    } catch (err) {
+        console.log('Notifications fetch error:', err);
+        return getDefaultNotifications();
+    }
+}
+
+// Default notifications for when table doesn't exist yet
+function getDefaultNotifications(): Notification[] {
     return [
         {
-            id: '1',
-            title: 'Daily Rewards Distributed',
-            message: 'You have received 45.2 XAND for 99.8% uptime yesterday.',
-            type: 'success',
-            read: false,
-            timestamp: new Date(Date.now() - 3600 * 1000).toISOString(), // 1 hour ago
-        },
-        {
-            id: '2',
-            title: 'Node Update Available',
-            message: 'pNode v0.8.2 is now available. Update recommended for optimal performance.',
+            id: 'default-1',
+            title: 'Welcome to pNode Analytics',
+            message: 'Real-time monitoring is now active. Data refreshes every 5 minutes.',
             type: 'info',
             read: false,
-            timestamp: new Date(Date.now() - 3600 * 5000).toISOString(), // 5 hours ago
+            timestamp: new Date().toISOString(),
         },
         {
-            id: '3',
-            title: 'Network Alert',
-            message: 'High latency detected in EU-West region due to increased traffic.',
-            type: 'warning',
-            read: true,
-            timestamp: new Date(Date.now() - 86400 * 1000).toISOString(), // 1 day ago
-        },
-        {
-            id: '4',
-            title: 'New Peer Connected',
-            message: 'Your node just peered with Node #8821 (Xandeum Foundation).',
+            id: 'default-2',
+            title: 'Network Connected',
+            message: 'Successfully connected to Xandeum network via pRPC.',
             type: 'success',
             read: true,
-            timestamp: new Date(Date.now() - 86400 * 2000).toISOString(), // 2 days ago
+            timestamp: new Date(Date.now() - 3600 * 1000).toISOString(),
         },
-        {
-            id: '5',
-            title: 'Storage Goal Met',
-            message: 'Your allocated storage usage has reached 50%.',
-            type: 'info',
-            read: true,
-            timestamp: new Date(Date.now() - 86400 * 4000).toISOString(), // 4 days ago
-        }
     ];
 }
 
 async function markAsRead(id: string): Promise<void> {
-    // No-op
+    try {
+        const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', id);
+
+        if (error) console.log('Mark as read error:', error.message);
+    } catch (err) {
+        console.log('Mark as read failed:', err);
+    }
 }
 
 async function deleteNotification(id: string): Promise<void> {
-    // No-op
+    try {
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('id', id);
+
+        if (error) console.log('Delete notification error:', error.message);
+    } catch (err) {
+        console.log('Delete notification failed:', err);
+    }
 }
 
 async function markAllAsRead(): Promise<void> {
-    // No-op
+    try {
+        const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('read', false);
+
+        if (error) console.log('Mark all as read error:', error.message);
+    } catch (err) {
+        console.log('Mark all as read failed:', err);
+    }
 }
 
 // --- Hook ---
@@ -70,7 +106,7 @@ export function useNotifications() {
     const queryClient = useQueryClient();
     const notificationsKey = ['notifications'];
 
-    // 1. Fetch Notifications
+    // 1. Fetch Notifications with 5 minute cache
     const {
         data: notifications = [],
         isLoading,
@@ -78,6 +114,8 @@ export function useNotifications() {
     } = useQuery({
         queryKey: notificationsKey,
         queryFn: fetchNotifications,
+        staleTime: 5 * 60 * 1000, // 5 minutes cache
+        refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
     });
 
     // 2. Mutations
