@@ -78,6 +78,11 @@ export function MapContent({ nodes }: MapContentProps) {
         <div
             id={containerId.current}
             className="w-full h-full min-h-[300px] rounded-lg overflow-hidden"
+            style={{
+                aspectRatio: '16/9',
+                containIntrinsicSize: '0 300px',
+                contentVisibility: 'auto'
+            }}
         />
     );
 }

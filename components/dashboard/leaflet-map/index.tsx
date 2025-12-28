@@ -13,8 +13,11 @@ const MapContent = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="w-full h-full flex items-center justify-center bg-black/50 rounded-lg min-h-[300px]">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+            <div
+                className="w-full h-full flex items-center justify-center bg-accent/50 rounded-lg"
+                style={{ minHeight: '300px', aspectRatio: '16/9' }}
+            >
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
             </div>
         ),
     }

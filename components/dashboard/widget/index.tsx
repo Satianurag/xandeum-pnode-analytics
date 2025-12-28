@@ -53,7 +53,11 @@ export default function Widget() {
           <span>{mounted ? dateInfo.restOfDate : '---'}</span>
         </div>
         <div className="text-center">
-          <div className="text-5xl font-display" suppressHydrationWarning>
+          <div
+            className="text-5xl font-display tabular-nums"
+            style={{ minWidth: '8ch' }}
+            suppressHydrationWarning
+          >
             {mounted ? formatTime(time) : '--:-- --'}
           </div>
         </div>
@@ -73,10 +77,12 @@ export default function Widget() {
         <div className="absolute inset-0 -z-[1]">
           <Image
             src="/assets/pc_blueprint.gif"
-            alt="logo"
+            alt=""
             width={250}
             height={250}
             className="size-full object-contain"
+            priority
+            unoptimized
           />
         </div>
       </CardContent>
