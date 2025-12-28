@@ -14,12 +14,20 @@ import GlobeIcon from "@/components/icons/globe";
 import { usePNodes, useNetworkStats, usePerformanceHistory, useGossipEvents, useXScore } from "@/hooks/use-pnode-data-query";
 import DashboardStat from "@/components/dashboard/stat";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { NetworkChart } from "@/components/dashboard/network-chart";
 import { InfoTooltip } from "@/components/dashboard/info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import dynamic from 'next/dynamic';
 
 import { LeafletMap } from "@/components/dashboard/leaflet-map";
-import { LiveNetworkPulse } from "@/components/dashboard/live-pulse";
+
+const NetworkChart = dynamic(() => import("@/components/dashboard/network-chart").then(mod => mod.NetworkChart), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 rounded-lg bg-accent/20" />
+});
+
+const LiveNetworkPulse = dynamic(() => import("@/components/dashboard/live-pulse").then(mod => mod.LiveNetworkPulse), {
+  ssr: false
+});
 
 
 function LoadingState() {

@@ -1,0 +1,60 @@
+
+> xandeum-pnode-analytics@0.1.0 build
+> next build
+
+▲ Next.js 16.1.0 (Turbopack)
+- Experiments (use with caution):
+  ✓ optimizeCss
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 21.9s
+  Running TypeScript ...
+  Collecting page data using 3 workers ...
+[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
+[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
+  Generating static pages using 3 workers (0/22) ...
+  Generating static pages using 3 workers (5/22) 
+  Generating static pages using 3 workers (10/22) 
+  Generating static pages using 3 workers (16/22) 
+✓ Generating static pages using 3 workers (22/22) in 1054.1ms
+  Finalizing page optimization ...
+
+Route (app)                     Revalidate  Expire
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /alerts                             1m      1y
+├ ƒ /analytics
+├ ƒ /api/censorship-resistance
+├ ƒ /api/chat
+├ ƒ /api/cron/update-pnodes
+├ ƒ /api/decentralization
+├ ƒ /api/health-score
+├ ƒ /api/health-trends
+├ ƒ /api/ingest
+├ ƒ /api/notifications
+├ ƒ /api/peer-rankings
+├ ƒ /api/pnode-data
+├ ƒ /api/staking-stats
+├ ƒ /api/superminority
+├ ƒ /api/test-data
+├ ƒ /api/trend-data
+├ ƒ /api/verify-operator
+├ ƒ /api/version-distribution
+├ ○ /decentralization                   1m      1y
+├ ○ /health                             1m      1y
+├ ○ /network                            1m      1y
+├ ○ /opengraph-image.png
+├ ƒ /performance
+├ ƒ /pnodes
+└ ƒ /pnodes/[pubkey]
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

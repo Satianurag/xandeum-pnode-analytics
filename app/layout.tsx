@@ -5,15 +5,29 @@ import { V0Provider } from "@/lib/v0-context";
 import localFont from "next/font/local";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
-import Widget from "@/components/dashboard/widget";
-import Notifications from "@/components/dashboard/notifications";
-import { MobileChat } from "@/components/chat/mobile-chat";
-import Chat from "@/components/chat";
-import { WalletContextProvider } from "@/contexts/wallet-context";
 import { QueryProvider } from "@/lib/query-provider";
+import { WalletContextProvider } from "@/contexts/wallet-context";
 import { NetworkMarquee } from "@/components/dashboard/network-marquee";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Dynamic imports for heavy components
+const DashboardSidebar = dynamic(() => import("@/components/dashboard/sidebar").then(mod => mod.DashboardSidebar));
+
+const Widget = dynamic(() => import("@/components/dashboard/widget"), {
+  loading: () => <Skeleton className="h-32 rounded-lg bg-accent/20" />
+});
+
+const Notifications = dynamic(() => import("@/components/dashboard/notifications"), {
+  loading: () => <Skeleton className="h-32 rounded-lg bg-accent/20" />
+});
+
+const Chat = dynamic(() => import("@/components/chat"), {
+  loading: () => <Skeleton className="h-48 rounded-lg bg-accent/20" />
+});
+
+const MobileChat = dynamic(() => import("@/components/chat/mobile-chat").then(mod => mod.MobileChat));
 // LiveNetworkPulse moved to app/page.tsx for performance
 // LiveNetworkPulse moved to app/page.tsx for performance
 

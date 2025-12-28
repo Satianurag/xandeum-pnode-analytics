@@ -55,6 +55,11 @@ const nextConfig: NextConfig = {
   // We provide an empty config to silence the warning about having webpack config
   turbopack: {},
 
+  // Optimize CSS loading
+  experimental: {
+    optimizeCss: true,
+  },
+
   // Webpack fallback for production
   webpack: (config, { isServer }) => {
     if (!isServer) {

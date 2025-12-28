@@ -2,6 +2,12 @@
   "name": "xandeum-pnode-analytics",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ipod",
+    "not ie <= 11"
+  ],
   "scripts": {
     "build": "next build",
     "dev": "next dev -H 0.0.0.0 -p 5000 --webpack",
@@ -85,7 +91,8 @@
     "eslint-config-next": "^15.5.9",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.18",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "critters": "^0.0.23"
   },
   "overrides": {
     "glob": "^11.0.0",
