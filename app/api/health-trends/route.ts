@@ -27,9 +27,14 @@ export async function GET(request: Request) {
         }
 
         // Parse the data
-        const parsedData = historyData.map((item: any) =>
-            typeof item === 'string' ? JSON.parse(item) : item
-        );
+        const parsedData = historyData.map((item: any) => {
+            try {
+                return typeof item === 'string' ? JSON.parse(item) : item;
+            } catch (error) {
+                console.warn('Skipping malformed history item:', item);
+                return null;
+            }
+        }).filter((item: any) => item !== null);
 
         // Get current network stats for health
         const currentStats = await redis.get(CACHE_KEYS.NETWORK_STATS) as string | null;
