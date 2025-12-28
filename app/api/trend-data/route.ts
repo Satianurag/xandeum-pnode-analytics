@@ -32,16 +32,24 @@ export async function GET(request: Request) {
 
         // Format data for charting
         const trendData = historyData.reverse().map((item: any) => {
-            const parsed = typeof item === 'string' ? JSON.parse(item) : item;
-            return {
-                timestamp: parsed.timestamp,
-                value: parsed[metricKey] || 0,
-                label: new Date(parsed.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-            };
-        });
+            try {
+                const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+                // Check if parsed is valid object and not null
+                if (!parsed || typeof parsed !== 'object') return null;
+
+                return {
+                    timestamp: parsed.timestamp,
+                    value: parsed[metricKey] || 0,
+                    label: new Date(parsed.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                };
+            } catch (error) {
+                console.warn('Skipping malformed trend item:', item);
+                return null;
+            }
+        }).filter((item: any) => item !== null);
 
         return NextResponse.json(trendData);
     } catch (error) {

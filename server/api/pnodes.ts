@@ -372,6 +372,26 @@ export async function ingestNodeData() {
 
             await redis.set(CACHE_KEYS.NETWORK_STATS, JSON.stringify(statsData), { ex: CACHE_TTL.PNODES });
 
+            // Self-Healing: Check for corruption and sanitize if needed
+            const currentHistory = await redis.lrange(CACHE_KEYS.NETWORK_HISTORY, 0, -1);
+            if (currentHistory && currentHistory.length > 0) {
+                const cleanHistory = currentHistory.filter(item => {
+                    try {
+                        return typeof item === 'string' && !item.includes('[object Object]') && JSON.parse(item);
+                    } catch { return false; }
+                });
+
+                if (cleanHistory.length < currentHistory.length) {
+                    console.warn(`Sanitizing network history: removed ${currentHistory.length - cleanHistory.length} corrupted items.`);
+                    await redis.del(CACHE_KEYS.NETWORK_HISTORY);
+                    if (cleanHistory.length > 0) {
+                        // Restore valid items. Since lrange returns [newest...oldest], 
+                        // and we want to preserve that order, we can just rpush them back in.
+                        await redis.rpush(CACHE_KEYS.NETWORK_HISTORY, ...cleanHistory);
+                    }
+                }
+            }
+
             // Push to history list (keep last 100 entries)
             await redis.lpush(CACHE_KEYS.NETWORK_HISTORY, JSON.stringify({
                 timestamp: statsData.lastUpdated,
