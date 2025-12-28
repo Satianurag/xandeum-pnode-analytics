@@ -5,12 +5,11 @@
   "browserslist": [
     ">0.2%",
     "not dead",
-    "not ipod",
     "not ie <= 11"
   ],
   "scripts": {
     "build": "next build",
-    "dev": "next dev -H 0.0.0.0 -p 5000 --webpack",
+    "dev": "next dev -H 0.0.0.0 -p 5000 --turbo",
     "lint": "eslint .",
     "start": "next start -H 0.0.0.0 -p 5000"
   },
@@ -87,12 +86,13 @@
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "critters": "^0.0.23",
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.5.9",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.18",
-    "typescript": "5.9.3",
-    "critters": "^0.0.23"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "glob": "^11.0.0",

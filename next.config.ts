@@ -2,15 +2,16 @@ import type { NextConfig } from "next"
 import path from "path"
 
 const nextConfig: NextConfig = {
-  // Note: cacheComponents (PPR) is incompatible with `export const revalidate`
-  // We use ISR with revalidate=60s which provides excellent caching
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚀 PERFORMANCE OPTIMIZATIONS (2025 Best Practices)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   // Enable TypeScript type checking in production
   typescript: {
     ignoreBuildErrors: false,
   },
 
-  // Optimize images for production
+  // Optimize images for production (AVIF first for best compression)
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
@@ -20,7 +21,7 @@ const nextConfig: NextConfig = {
 
   outputFileTracingRoot: path.resolve(__dirname),
 
-  // Production-ready headers
+  // Production-ready security headers
   async headers() {
     return [
       {
@@ -52,15 +53,25 @@ const nextConfig: NextConfig = {
   },
 
   // Turbopack configuration (Next.js 16+)
-  // We provide an empty config to silence the warning about having webpack config
   turbopack: {},
 
-  // Optimize CSS loading
+  // React Compiler - automatic memoization, 12% faster loads (Meta benchmarks)
+  // Eliminates need for useMemo, useCallback, React.memo in most cases
+  reactCompiler: true,
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 EXPERIMENTAL FEATURES (Next.js 16 / React 19)
+  // ═══════════════════════════════════════════════════════════════════════════
   experimental: {
+    // CSS optimization - reduces render-blocking CSS
     optimizeCss: true,
+
+    // View Transitions API - GPU-accelerated page transitions
+    // Provides native app-like navigation experience
+    viewTransition: true,
   },
 
-  // Webpack fallback for production
+  // Webpack fallback for production (client-side polyfills)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
