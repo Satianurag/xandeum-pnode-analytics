@@ -13,6 +13,7 @@ import Chat from "@/components/chat";
 import { WalletContextProvider } from "@/contexts/wallet-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { NetworkMarquee } from "@/components/dashboard/network-marquee";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 // LiveNetworkPulse moved to app/page.tsx for performance
 // LiveNetworkPulse moved to app/page.tsx for performance
 
@@ -98,6 +99,7 @@ export default function RootLayout({
             </WalletContextProvider>
           </QueryProvider>
         </V0Provider>
+        <SpeedInsights />
       </body>
     </html>
   );
