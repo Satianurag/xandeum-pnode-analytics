@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Dynamic imports for heavy components
+import { JitWrapper } from "@/components/ui/jit-wrapper";
 const DashboardSidebar = dynamic(() => import("@/components/dashboard/sidebar").then(mod => mod.DashboardSidebar));
 
 const Widget = dynamic(() => import("@/components/dashboard/widget"), {
@@ -104,9 +105,15 @@ export default function RootLayout({
                   <main id="main-content" className="col-span-1 lg:col-span-7">{children}</main>
                   <div className="col-span-3 hidden lg:block">
                     <div className="fixed right-[var(--sides)] top-0 bottom-6 w-[calc((100vw-var(--sides)*2-var(--gap)*2)/12*3)] space-y-gap pt-sides overflow-clip">
-                      <Widget />
-                      <Notifications />
-                      <Chat />
+                      <JitWrapper fallback={<Skeleton className="h-32 rounded-lg bg-accent/20" />}>
+                        <Widget />
+                      </JitWrapper>
+                      <JitWrapper fallback={<Skeleton className="h-32 rounded-lg bg-accent/20" />}>
+                        <Notifications />
+                      </JitWrapper>
+                      <JitWrapper fallback={<Skeleton className="h-48 rounded-lg bg-accent/20" />}>
+                        <Chat />
+                      </JitWrapper>
                     </div>
                   </div>
                 </div>

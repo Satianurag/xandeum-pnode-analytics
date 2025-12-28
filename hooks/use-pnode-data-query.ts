@@ -3,9 +3,9 @@ import { PNode, NetworkStats, PerformanceHistory, GossipHealth, GossipEvent, Sto
 import React, { useEffect, useState } from 'react';
 import { REFRESH_INTERVAL } from '@/lib/pnode-api';
 
-// Generic fetcher for unified API
-async function fetchApi<T>(params: string): Promise<T> {
-    const res = await fetch(`/api/pnode-data?${params}`);
+// Generic fetcher for unified API with priority support
+async function fetchApi<T>(params: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`/api/pnode-data?${params}`, init);
     if (!res.ok) {
         throw new Error(`API Error: ${res.status}`);
     }
@@ -15,20 +15,20 @@ async function fetchApi<T>(params: string): Promise<T> {
 export function usePNodes(initialData?: any) {
     return useQuery({
         queryKey: ['pnodes'],
-        queryFn: () => fetchApi<PNode[]>('type=cluster-nodes'),
+        queryFn: () => fetchApi<PNode[]>('type=cluster-nodes', { priority: 'high' } as RequestInit),
         initialData,
-        staleTime: 60000,
-        refetchInterval: REFRESH_INTERVAL,
+        staleTime: Infinity, // Never stale (instant load from cache)
+        refetchOnWindowFocus: false,
     });
 }
 
 export function useNetworkStats(initialData?: any) {
     return useQuery({
         queryKey: ['network-stats'],
-        queryFn: () => fetchApi<NetworkStats>('type=network-stats'),
+        queryFn: () => fetchApi<NetworkStats>('type=network-stats', { priority: 'high' } as RequestInit),
         initialData,
-        staleTime: 60000,
-        refetchInterval: REFRESH_INTERVAL,
+        staleTime: Infinity,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -80,7 +80,8 @@ export function useEpochInfo() {
     return useQuery({
         queryKey: ['epoch-info'],
         queryFn: () => fetchApi<EpochInfo>('type=epoch-info'),
-        refetchInterval: REFRESH_INTERVAL,
+        staleTime: Infinity,
+        refetchOnWindowFocus: false,
     });
 }
 

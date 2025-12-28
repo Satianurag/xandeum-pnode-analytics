@@ -9,9 +9,9 @@ function makeQueryClient() {
     return new QueryClient({
         defaultOptions: {
             queries: {
-                staleTime: 2 * 60 * 1000, // 2 minutes - aligned with server cache
-                gcTime: 10 * 60 * 1000, // 10 minutes - longer retention
-                refetchOnWindowFocus: true, // Refetch when user returns to tab
+                staleTime: 5 * 60 * 1000, // 5 minutes default
+                gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep data in memory for session
+                refetchOnWindowFocus: false, // Disable background refetching for instant feel
                 refetchOnReconnect: true, // Refetch on network reconnect
                 refetchOnMount: false, // Trust cached data on navigation
                 retry: 2, // Retry failed requests twice

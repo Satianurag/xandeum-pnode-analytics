@@ -112,7 +112,6 @@ export function PreloadLink({ href, children, onClick, ...props }: PreloadLinkPr
             ref={linkRef}
             href={href}
             onMouseEnter={handleMouseEnter}
-            onMouseDown={handleMouseDown}
             onClick={onClick}
             prefetch={false} // We handle prefetching manually
             {...props}
