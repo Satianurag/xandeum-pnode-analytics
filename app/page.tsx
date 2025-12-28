@@ -3,12 +3,11 @@ import { getClusterNodes } from "@/server/api/pnodes";
 import { getNetworkStats } from "@/server/api/network";
 import DashboardOverview from "./dashboard-client";
 
-// ISR: Revalidate every 60 seconds
-export const revalidate = 60;
+// Force dynamic rendering for Redis
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-    // Fetch data on the server
-    // This will hit the Supabase cache we created
+    // Fetch data on the server (Redis cache)
     const [nodes, stats] = await Promise.all([
         getClusterNodes(),
         getNetworkStats()

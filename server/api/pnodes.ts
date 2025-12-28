@@ -1,6 +1,6 @@
 import { PNode } from '@/types/pnode';
 import { POD_CREDITS_API, CACHE_DURATION } from './config';
-import { supabase } from '@/lib/supabase';
+import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 import { PodCreditsResponse, GeolocationData } from '@/infrastructure/rpc/types';
 import { hashPubkey } from './utils';
 import { getPrpcClient } from '@/infrastructure/xandeum/client';
@@ -248,7 +248,7 @@ function mapRpcNodeToPNode(
 
 
 /**
- * Ingests data from RPC sources and updates Supabase.
+ * Ingests data from RPC sources and stores in Redis cache.
  * This is the SOURCE OF TRUTH updater.
  */
 export async function ingestNodeData() {
@@ -333,101 +333,86 @@ export async function ingestNodeData() {
             updated_at: new Date().toISOString(),
         }));
 
-        // 6. Upsert to Supabase
-        if (rows.length > 0) {
-            const { error } = await supabase.from('pnodes').upsert(rows);
-            if (error) {
-                console.error('Supabase Upsert Error:', error);
-                throw error;
-            }
-            console.log(`Ingested ${rows.length} pNodes.`);
+        // 6. Store in Redis
+        if (uniqueNodes.length > 0) {
+            // Store pNodes array in Redis with 5 min TTL
+            await redis.set(CACHE_KEYS.PNODES, JSON.stringify(uniqueNodes), { ex: CACHE_TTL.PNODES });
+            console.log(`Ingested ${uniqueNodes.length} pNodes to Redis.`);
 
-            // 7. Aggegate and Update Network Stats
-            // we query the DB for the TOTAL state to ensure consistency between dashboard and list view.
-            const { count: dbTotalNodes, error: countError } = await supabase
-                .from('pnodes')
-                .select('*', { count: 'exact', head: true });
+            // 7. Calculate and store Network Stats
+            const totalNodes = uniqueNodes.length;
+            const onlineNodes = uniqueNodes.filter(n => n.status === 'online').length;
+            const offlineNodes = uniqueNodes.filter(n => n.status === 'offline').length;
 
-            const { count: dbOnlineNodes, error: onlineError } = await supabase
-                .from('pnodes')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'online');
-
-            const { count: dbOfflineNodes, error: offlineError } = await supabase
-                .from('pnodes')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'offline');
-
-            if (countError) console.error('Error counting total nodes:', countError);
-            if (onlineError) console.error('Error counting online nodes:', onlineError);
-            if (offlineError) console.error('Error counting offline nodes:', offlineError);
-
-            const totalNodes = dbTotalNodes ?? rows.length;
-            const onlineNodes = dbOnlineNodes ?? rows.filter(r => r.status === 'online').length;
-            const offlineNodes = dbOfflineNodes ?? rows.filter(r => r.status === 'offline').length;
-
-            // Metrics from the current batch are still useful for averages of *active* nodes
-            // But ideally we'd aggregation on DB. For now, batch metrics are a good approximation for active stats.
-            const totalStorage = rows.reduce((acc, r) => acc + (r.metrics.storageCapacityGB || 0), 0) / 1000; // TB
-            const totalUsed = rows.reduce((acc, r) => acc + (r.metrics.storageUsedGB || 0), 0) / 1000; // TB
-            const avgUptime = totalNodes > 0 ? rows.reduce((acc, r) => acc + (r.uptime || 0), 0) / rows.length : 0;
+            const totalStorage = uniqueNodes.reduce((acc, n) => acc + (n.metrics.storageCapacityGB || 0), 0) / 1000; // TB
+            const totalUsed = uniqueNodes.reduce((acc, n) => acc + (n.metrics.storageUsedGB || 0), 0) / 1000; // TB
+            const avgUptime = totalNodes > 0 ? uniqueNodes.reduce((acc, n) => acc + (n.uptime || 0), 0) / uniqueNodes.length : 0;
 
             // Calculate REAL average response time from measured latencies
-            const nodesWithLatency = rows.filter(r => r.metrics.responseTimeMs > 0 && r.metrics.responseTimeMs < PING_TIMEOUT_MS);
+            const nodesWithLatency = uniqueNodes.filter(n => n.metrics.responseTimeMs > 0 && n.metrics.responseTimeMs < PING_TIMEOUT_MS);
             const avgResponseTime = nodesWithLatency.length > 0
-                ? nodesWithLatency.reduce((acc, r) => acc + r.metrics.responseTimeMs, 0) / nodesWithLatency.length
+                ? nodesWithLatency.reduce((acc, n) => acc + n.metrics.responseTimeMs, 0) / nodesWithLatency.length
                 : 0;
 
-            // Estimate gossip messages (approximation based on online nodes and activity)
-            const estimatedGossipMessages = onlineNodes * 60 * 24; // ~1 msg/min per node over 24h
+            const estimatedGossipMessages = onlineNodes * 60 * 24;
 
-            const statsRow = {
-                total_nodes: totalNodes,
-                online_nodes: onlineNodes,
-                offline_nodes: offlineNodes,
-                total_storage_tb: totalStorage,
-                total_storage_used_tb: totalUsed,
-                avg_uptime: avgUptime,
-                avg_response_time: avgResponseTime, // REAL measured latency average
-                network_health: totalNodes > 0 ? (onlineNodes / totalNodes) * 100 : 0,
-                gossip_messages_24h_count: estimatedGossipMessages, // Estimated
-                updated_at: new Date().toISOString()
+            const statsData = {
+                totalNodes,
+                onlineNodes,
+                offlineNodes,
+                degradedNodes: 0,
+                totalStorageCapacityTB: totalStorage,
+                totalStorageUsedTB: totalUsed,
+                averageUptime: avgUptime,
+                averageResponseTime: avgResponseTime,
+                networkHealth: totalNodes > 0 ? (onlineNodes / totalNodes) * 100 : 0,
+                gossipMessages24h: estimatedGossipMessages,
+                lastUpdated: new Date().toISOString(),
             };
 
-            const { error: statsError } = await supabase.from('network_stats').insert(statsRow);
-            if (statsError) console.error('Stats Insert Error:', statsError);
+            await redis.set(CACHE_KEYS.NETWORK_STATS, JSON.stringify(statsData), { ex: CACHE_TTL.PNODES });
 
-            // 8. Generate notifications for significant events
-            try {
-                const offlineNodesInBatch = rows.filter(r => r.status === 'offline');
-                if (offlineNodesInBatch.length > 0 && offlineNodesInBatch.length <= 10) {
-                    // Only notify if there are some offline nodes (not a mass outage which would spam)
-                    const notifications = offlineNodesInBatch.slice(0, 5).map(node => ({
-                        title: 'Node Offline',
-                        message: `Node ${node.pubkey.slice(0, 8)}... is currently offline`,
-                        type: 'warning',
-                        node_pubkey: node.pubkey,
-                        read: false,
-                        timestamp: new Date().toISOString()
-                    }));
+            // Push to history list (keep last 100 entries)
+            await redis.lpush(CACHE_KEYS.NETWORK_HISTORY, JSON.stringify({
+                timestamp: statsData.lastUpdated,
+                avgResponseTime: statsData.averageResponseTime,
+                totalNodes: statsData.totalNodes,
+                onlineNodes: statsData.onlineNodes,
+                storageUsedTB: statsData.totalStorageUsedTB,
+                gossipMessages: statsData.gossipMessages24h,
+            }));
+            await redis.ltrim(CACHE_KEYS.NETWORK_HISTORY, 0, 99); // Keep only last 100
 
-                    const { error } = await supabase.from('notifications').upsert(
-                        notifications,
-                        { onConflict: 'node_pubkey', ignoreDuplicates: true }
-                    );
+            // 8. Store notifications for offline nodes
+            const offlineNodesInBatch = uniqueNodes.filter(n => n.status === 'offline');
+            if (offlineNodesInBatch.length > 0 && offlineNodesInBatch.length <= 10) {
+                const notifications = offlineNodesInBatch.slice(0, 5).map(node => ({
+                    id: `offline_${node.pubkey}`,
+                    title: 'Node Offline',
+                    message: `Node ${node.pubkey.slice(0, 8)}... is currently offline`,
+                    type: 'warning',
+                    priority: 'medium',
+                    read: false,
+                    timestamp: new Date().toISOString()
+                }));
 
-                    if (error) {
-                        console.log('Notifications upsert error:', error.message);
+                // Get existing notifications and merge (avoid duplicates)
+                const existing = await redis.get(CACHE_KEYS.NOTIFICATIONS);
+                let allNotifications = existing ? (typeof existing === 'string' ? JSON.parse(existing) : existing) : [];
+
+                notifications.forEach(n => {
+                    if (!allNotifications.some((e: any) => e.id === n.id)) {
+                        allNotifications.unshift(n);
                     }
-                }
-            } catch (notifyErr) {
-                console.log('Notification generation skipped:', notifyErr);
+                });
+
+                // Keep only last 20 notifications
+                allNotifications = allNotifications.slice(0, 20);
+                await redis.set(CACHE_KEYS.NOTIFICATIONS, JSON.stringify(allNotifications), { ex: CACHE_TTL.NOTIFICATIONS });
             }
-
-
         }
 
-        return pnodes;
+        return uniqueNodes;
 
     } catch (err) {
         console.error('Ingestion Failed:', err);
@@ -436,60 +421,35 @@ export async function ingestNodeData() {
 }
 
 /**
- * Gets nodes from Supabase. 
- * If table is empty or stale by > 5 mins, triggers ingestion (blocking or bg).
+ * Gets nodes from Redis cache.
+ * If cache is empty, triggers fresh ingestion.
  */
 export async function getClusterNodes(): Promise<PNode[]> {
     try {
-        const { data: cachedNodes, error } = await supabase
-            .from('pnodes')
-            .select('*')
-            .order('credits', { ascending: false });
+        // Try to get from Redis cache
+        // Upstash Redis auto-parses JSON, so it may return an object or null
+        const cached = await redis.get(CACHE_KEYS.PNODES);
 
-        // Check if we need to ingest
-        let needsUpdate = false;
-        if (error || !cachedNodes || cachedNodes.length === 0) {
-            needsUpdate = true;
-        } else {
-            const lastUpdate = new Date(cachedNodes[0].updated_at).getTime();
-            const diff = Date.now() - lastUpdate;
-            if (diff > 5 * 60 * 1000) {
-                needsUpdate = true;
-                console.log('Data stale (> 5m). Triggering update.');
-            }
+        if (cached) {
+            // Handle both string and already-parsed array
+            const nodes = (typeof cached === 'string' ? JSON.parse(cached) : cached) as PNode[];
+            console.log(`Returning ${nodes.length} pNodes from Redis cache.`);
+            return nodes;
         }
 
-        if (needsUpdate) {
-            // We will AWAIT ingestion to ensure user gets data. 
-            // For production, we might want to return stale data and update in background,
-            // but user requested "Real Data" and "Fresh".
-            console.log('Fetching fresh data...');
+        // Cache miss - fetch fresh data
+        console.log('Redis cache miss. Fetching fresh data...');
+        const freshNodes = await ingestNodeData();
+        return freshNodes || [];
+    } catch (err) {
+        console.error('getClusterNodes error:', err);
+        // Fallback to fresh fetch on any error
+        try {
             const freshNodes = await ingestNodeData();
             return freshNodes || [];
+        } catch (fetchErr) {
+            console.error('Fallback fetch also failed:', fetchErr);
+            return [];
         }
-
-
-        // Map rows back to PNode
-        return cachedNodes!.map(row => ({
-            id: row.id,
-            pubkey: row.pubkey,
-            ip: row.ip,
-            port: row.port,
-            version: row.version,
-            status: row.status,
-            uptime: row.uptime,
-            lastSeen: row.last_seen,
-            location: row.location,
-            metrics: row.metrics,
-            performance: row.performance,
-            credits: row.credits,
-            creditsRank: row.credits_rank,
-            gossip: row.gossip,
-            staking: row.staking,
-            history: row.history
-        }));
-    } catch (err) {
-        console.error('getClusterNodes error (Supabase may not be configured):', err);
-        return [];
     }
 }

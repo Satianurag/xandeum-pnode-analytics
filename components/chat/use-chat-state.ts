@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { ChatState, ChatMessage, ChatConversation } from "@/types/chat";
-import { getCurrentUser } from "@/lib/chat-utils";
+import { getCurrentUser, fetchConversations, sendMessage as sendChatMessage } from "@/lib/chat-utils";
 
 
 type ChatComponentState = {
@@ -25,6 +25,7 @@ interface ChatStore {
   goBack: () => void;
   toggleExpanded: () => void;
   initializeChat: () => void;
+  refreshConversations: () => void;
 }
 
 const chatStore = create<ChatStore>((set, get) => ({
@@ -32,7 +33,7 @@ const chatStore = create<ChatStore>((set, get) => ({
   chatState: {
     state: "collapsed",
   },
-  conversations: [], // Empty init
+  conversations: [],
   newMessage: "",
   isInitialized: false,
 
@@ -43,6 +44,10 @@ const chatStore = create<ChatStore>((set, get) => ({
 
   setNewMessage: (newMessage) => set({ newMessage }),
 
+  refreshConversations: async () => {
+    const conversations = await fetchConversations();
+    set({ conversations });
+  },
 
   initializeChat: async () => {
     const { isInitialized } = get();
@@ -50,66 +55,63 @@ const chatStore = create<ChatStore>((set, get) => ({
 
     set({ isInitialized: true });
 
-    // Initial Fetch
-    const conversations = await import("@/lib/chat-utils").then(m => m.fetchConversations());
+    // Initial Fetch from Redis
+    const conversations = await fetchConversations();
     set({ conversations });
 
-    // Realtime Subscription
-    const { supabase } = await import("@/lib/supabase");
-    const { mapMessageToChatMessage, getCurrentUser } = await import("@/lib/chat-utils");
-
-    supabase.channel('public:chat_messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-        const newMsg = payload.new;
-        const currentUser = getCurrentUser();
-        const chatMsg = mapMessageToChatMessage(newMsg, currentUser.id);
-
-        const { conversations } = get();
-
-        const updated = conversations.map(c => {
-          if (c.id === newMsg.conversation_id) {
-            // Check if already exists (optimistic)
-            if (c.messages.some(m => m.id === chatMsg.id || (m.isFromCurrentUser && m.content === chatMsg.content && new Date(m.timestamp).getTime() - new Date(chatMsg.timestamp).getTime() < 1000))) {
-              return c;
-            }
-            return {
-              ...c,
-              messages: [...c.messages, chatMsg],
-              lastMessage: chatMsg,
-              unreadCount: c.id !== get().chatState.activeConversation ? c.unreadCount + 1 : 0
-            };
-          }
-          return c;
-        });
-
-        set({ conversations: updated });
-      })
-      .subscribe();
+    // Set up polling for new messages (every 5 seconds)
+    // Poll for new messages every 5 seconds
+    setInterval(async () => {
+      const updatedConversations = await fetchConversations();
+      set({ conversations: updatedConversations });
+    }, 5000);
   },
 
   handleSendMessage: async () => {
-    const { newMessage, conversations, chatState } = get();
+    const { newMessage, conversations, chatState, refreshConversations } = get();
     const activeConvId = chatState.activeConversation;
     const activeConv = conversations.find(c => c.id === activeConvId);
 
     if (!newMessage.trim() || !activeConv) return;
 
-    // Optimistic update
     const currentUser = getCurrentUser();
-    // const tempId = `msg-${Date.now()}`; // Don't use temp ID for now to avoid dupes with simple logic
-    // Actually, stick to optimistic UI
-
     const content = newMessage.trim();
-    set({ newMessage: "" }); // Clear input immediately
 
-    const { sendMessage } = await import("@/lib/chat-utils");
-    await sendMessage(content, activeConv.id, currentUser.id);
+    // Optimistic UI update
+    const optimisticMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      content,
+      timestamp: new Date().toISOString(),
+      senderId: currentUser.id,
+      isFromCurrentUser: true,
+    };
+
+    const updatedConversations = conversations.map(c => {
+      if (c.id === activeConvId) {
+        return {
+          ...c,
+          messages: [...c.messages, optimisticMessage],
+          lastMessage: optimisticMessage,
+        };
+      }
+      return c;
+    });
+
+    set({ conversations: updatedConversations, newMessage: "" });
+
+    // Actually send to Redis
+    try {
+      await sendChatMessage(content, activeConv.id, currentUser.id);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      // Revert optimistic update on error
+      refreshConversations();
+    }
   },
 
   openConversation: (conversationId) => {
     const { conversations } = get();
 
-    // Update chat state
     set({
       chatState: { state: "conversation", activeConversation: conversationId },
     });
@@ -132,9 +134,9 @@ const chatStore = create<ChatStore>((set, get) => ({
   },
 
   openConversationWithUser: (userId: string, userName: string, userAvatar?: string) => {
-    const { conversations, setChatState } = get();
+    const { conversations } = get();
 
-    // 1. Check if conversation already exists
+    // Check if conversation already exists
     const existing = conversations.find(c =>
       c.participants.some(p => p.id === userId)
     );
@@ -146,7 +148,7 @@ const chatStore = create<ChatStore>((set, get) => ({
       return;
     }
 
-    // 2. Create new optimistic conversation
+    // Create new optimistic conversation
     const newId = `dm-${Date.now()}`;
 
     const newConversation: ChatConversation = {
@@ -157,7 +159,7 @@ const chatStore = create<ChatStore>((set, get) => ({
           name: userName,
           username: `@${userName.toLowerCase().replace(/\s+/g, '')}`,
           avatar: userAvatar || `https://api.dicebear.com/7.x/initials/svg?seed=${userId}`,
-          isOnline: Math.random() > 0.5 // Random online status for new nodes
+          isOnline: Math.random() > 0.5
         }
       ],
       messages: [],

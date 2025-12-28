@@ -2,45 +2,24 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
 import type { Notification } from '@/types/dashboard';
 
-// --- API Functions using Supabase ---
-
+// API endpoint for notifications (server-side Redis access)
 async function fetchNotifications(): Promise<Notification[]> {
     try {
-        const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
-            .order('timestamp', { ascending: false })
-            .limit(20);
-
-        if (error) {
-            console.log('Notifications table may not exist yet:', error.message);
-            // Return fallback data for first-time setup
+        const res = await fetch('/api/notifications');
+        if (!res.ok) {
+            console.log('Notifications fetch failed, using defaults');
             return getDefaultNotifications();
         }
-
-        if (!data || data.length === 0) {
-            return getDefaultNotifications();
-        }
-
-        return data.map(row => ({
-            id: row.id,
-            title: row.title,
-            message: row.message,
-            type: row.type as 'success' | 'info' | 'warning' | 'error',
-            priority: (row.priority as 'low' | 'medium' | 'high') || 'low',
-            read: row.read || false,
-            timestamp: row.timestamp,
-        }));
+        return res.json();
     } catch (err) {
         console.log('Notifications fetch error:', err);
         return getDefaultNotifications();
     }
 }
 
-// Default notifications for when table doesn't exist yet
+// Default notifications for fallback
 function getDefaultNotifications(): Notification[] {
     return [
         {
@@ -66,12 +45,11 @@ function getDefaultNotifications(): Notification[] {
 
 async function markAsRead(id: string): Promise<void> {
     try {
-        const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('id', id);
-
-        if (error) console.log('Mark as read error:', error.message);
+        await fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'markRead', id })
+        });
     } catch (err) {
         console.log('Mark as read failed:', err);
     }
@@ -79,12 +57,11 @@ async function markAsRead(id: string): Promise<void> {
 
 async function deleteNotification(id: string): Promise<void> {
     try {
-        const { error } = await supabase
-            .from('notifications')
-            .delete()
-            .eq('id', id);
-
-        if (error) console.log('Delete notification error:', error.message);
+        await fetch('/api/notifications', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
     } catch (err) {
         console.log('Delete notification failed:', err);
     }
@@ -92,12 +69,11 @@ async function deleteNotification(id: string): Promise<void> {
 
 async function markAllAsRead(): Promise<void> {
     try {
-        const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('read', false);
-
-        if (error) console.log('Mark all as read error:', error.message);
+        await fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'markAllRead' })
+        });
     } catch (err) {
         console.log('Mark all as read failed:', err);
     }

@@ -2,8 +2,8 @@
 import { getClusterNodes } from "@/server/api/pnodes";
 import PNodesPage from "./pnodes-client";
 
-// ISR: Revalidate every 60 seconds
-export const revalidate = 60;
+// Force dynamic rendering for Redis
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
     // Fetch data on the server

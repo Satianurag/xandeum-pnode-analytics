@@ -1,56 +1,25 @@
 import { NetworkStats, NetworkEvent, PerformanceHistory, GossipHealth, StorageDistribution } from '@/types/pnode';
 import { getClusterNodes } from './pnodes';
-import { supabase } from '@/lib/supabase';
+import { redis, CACHE_KEYS } from '@/lib/redis';
 
 // Real Data Only.
 
 export async function calculateNetworkTPS(): Promise<number> {
-    // Current RPC implementation might not support this fully, 
-    // but if we had performance samples, we'd use them.
-    // For now, return 0 if we can't get it from getClusterNodes or RPC directly without mocks.
-    // The previous implementation used 'fetchPerformanceSamples' from './rpc'.
-    // If that is real, we can keep it.
-    // I will assume fetchPerformanceSamples is REAL if it calls RPC.
-    // But to be safe and stick to Supabase architecture, we might want to store this in network_stats.
-
-    // For now, let's just return 0 to avoid "Bullshit" until we have a real source.
     return 0;
 }
 
 export async function calculateSkipRate(): Promise<{ overall: number; byValidator: Map<string, number> }> {
-    // Same here. Using real data or returning 0.
     return { overall: 0, byValidator: new Map() };
 }
 
 export async function getNetworkStats(): Promise<NetworkStats> {
     try {
-        // First try to get cached stats from Supabase for speed
-        const { data: cachedStats } = await supabase
-            .from('network_stats')
-            .select('*')
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .single();
+        // Try to get cached stats from Redis
+        // Upstash auto-parses JSON
+        const cached = await redis.get(CACHE_KEYS.NETWORK_STATS);
 
-        // If we have recent cached stats (< 5 min), use them
-        if (cachedStats) {
-            const lastUpdate = new Date(cachedStats.updated_at).getTime();
-            const diff = Date.now() - lastUpdate;
-            if (diff < 5 * 60 * 1000) {
-                return {
-                    totalNodes: cachedStats.total_nodes,
-                    onlineNodes: cachedStats.online_nodes,
-                    offlineNodes: cachedStats.offline_nodes,
-                    degradedNodes: 0,
-                    totalStorageCapacityTB: cachedStats.total_storage_tb,
-                    totalStorageUsedTB: cachedStats.total_storage_used_tb,
-                    averageUptime: cachedStats.avg_uptime,
-                    averageResponseTime: cachedStats.avg_response_time, // REAL measured latency
-                    networkHealth: cachedStats.network_health,
-                    gossipMessages24h: cachedStats.gossip_messages_24h_count,
-                    lastUpdated: cachedStats.updated_at,
-                };
-            }
+        if (cached) {
+            return (typeof cached === 'string' ? JSON.parse(cached) : cached) as NetworkStats;
         }
 
         // Fallback to calculating from pNodes
@@ -68,7 +37,6 @@ export async function getNetworkStats(): Promise<NetworkStats> {
             ? onlineNodesData.reduce((acc, n) => acc + n.uptime, 0) / onlineNodesData.length
             : 0;
 
-        // Calculate average response time from real measured latencies
         const nodesWithLatency = nodes.filter(n => n.metrics.responseTimeMs > 0 && n.metrics.responseTimeMs < 3000);
         const avgResponseTime = nodesWithLatency.length > 0
             ? nodesWithLatency.reduce((acc, n) => acc + n.metrics.responseTimeMs, 0) / nodesWithLatency.length
@@ -84,14 +52,13 @@ export async function getNetworkStats(): Promise<NetworkStats> {
             totalStorageCapacityTB: totalCapacity,
             totalStorageUsedTB: totalUsed,
             averageUptime: avgUptime,
-            averageResponseTime: avgResponseTime, // REAL measured latency
+            averageResponseTime: avgResponseTime,
             networkHealth,
-            gossipMessages24h: onlineNodes * 60 * 24, // Estimated
+            gossipMessages24h: onlineNodes * 60 * 24,
             lastUpdated: new Date().toISOString(),
         };
     } catch (err) {
-        console.error('getNetworkStats error (Supabase may not be configured):', err);
-        // Return empty/default stats
+        console.error('getNetworkStats error:', err);
         return {
             totalNodes: 0,
             onlineNodes: 0,
@@ -110,15 +77,10 @@ export async function getNetworkStats(): Promise<NetworkStats> {
 
 
 export async function getNetworkEvents(): Promise<NetworkEvent[]> {
-    // We cannot generate fake events.
-    // We can return a generic "System Online" event or deduce events from recent changes if we tracked them.
-    // For 'Fresh Start', let's return minimal real info.
-
     const nodes = await getClusterNodes();
     const events: NetworkEvent[] = [];
     const now = new Date().toISOString();
 
-    // Example: Generate events based on CURRENT status (REAL)
     const offlineNodes = nodes.filter(n => n.status === 'offline');
 
     offlineNodes.slice(0, 5).forEach(node => {
@@ -146,54 +108,48 @@ export async function getNetworkEvents(): Promise<NetworkEvent[]> {
 }
 
 export async function getPerformanceHistory(period: '24h' | '7d' | '30d' = '24h'): Promise<PerformanceHistory[]> {
-    // Query Supabase 'network_stats' table for history.
-    // This requires us to have historical rows.
+    const limit = period === '24h' ? 24 : period === '7d' ? 168 : 720;
 
-    const limit = period === '24h' ? 24 : period === '7d' ? 168 : 720; // Hourly points?
-    // We ingest every 5 mins.
-    // If we just pull last N rows, it maps to time.
+    try {
+        // Get history from Redis list
+        const historyData = await redis.lrange(CACHE_KEYS.NETWORK_HISTORY, 0, limit - 1);
 
-    // For now, return empty real history rather than fake sine waves.
+        if (!historyData || historyData.length === 0) {
+            return [];
+        }
 
-    const { data, error } = await supabase
-        .from('network_stats')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(limit);
-
-    if (error || !data) return [];
-
-    return data.map((row: any) => ({
-        timestamp: row.updated_at,
-        avgResponseTime: row.avg_response_time || 0,
-        totalNodes: row.total_nodes,
-        onlineNodes: row.online_nodes,
-        storageUsedTB: row.total_storage_used_tb || 0,
-        gossipMessages: row.gossip_messages_24h_count || 0
-    })).reverse();
+        return historyData.map((item: any) => {
+            const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+            return {
+                timestamp: parsed.timestamp,
+                avgResponseTime: parsed.avgResponseTime || 0,
+                totalNodes: parsed.totalNodes,
+                onlineNodes: parsed.onlineNodes,
+                storageUsedTB: parsed.storageUsedTB || 0,
+                gossipMessages: parsed.gossipMessages || 0
+            };
+        }).reverse();
+    } catch (err) {
+        console.error('getPerformanceHistory error:', err);
+        return [];
+    }
 }
 
 export async function getGossipHealth(): Promise<GossipHealth> {
     const nodes = await getClusterNodes();
     const onlineNodes = nodes.filter(n => n.status === 'online');
-    console.log(`Debug Gossip: total=${nodes.length} online=${onlineNodes.length}`);
 
-    // Calculate real aggregate metrics from online nodes
-    const totalPeers = onlineNodes.length * 8; // Estimate: dense network usually has ~8-12 peers/node
-    const avgPeersPerNode = onlineNodes.length > 0 ? 8 : 0; // Simplified for MVP if individual peer count isn't in metrics
+    const totalPeers = onlineNodes.length * 8;
+    const avgPeersPerNode = onlineNodes.length > 0 ? 8 : 0;
+    const messageRate = onlineNodes.length > 0 ? Math.floor(onlineNodes.length * 3.5) : 0;
 
-    // Derive message rate from node activity (if not explicitly tracked)
-    const messageRate = onlineNodes.length > 0 ? Math.floor(onlineNodes.length * 3.5) : 0; // Simulated reasonable baseline
-
-    // Average Latency
     const nodesWithLatency = onlineNodes.filter(n => n.metrics.responseTimeMs > 0);
     const networkLatency = nodesWithLatency.length > 0
         ? Math.round(nodesWithLatency.reduce((acc, n) => acc + n.metrics.responseTimeMs, 0) / nodesWithLatency.length)
         : 0;
 
-    // Calculate health score based on connectivity and latency
     let healthScore = 100;
-    if (onlineNodes.length < nodes.length * 0.7) healthScore -= 20; // Penalty if <70% online
+    if (onlineNodes.length < nodes.length * 0.7) healthScore -= 20;
     if (networkLatency > 200) healthScore -= 10;
     if (networkLatency > 500) healthScore -= 20;
 
@@ -202,7 +158,7 @@ export async function getGossipHealth(): Promise<GossipHealth> {
         avgPeersPerNode,
         messageRate,
         networkLatency,
-        partitions: 0, // Assuming no partitions for now
+        partitions: 0,
         healthScore: Math.max(0, healthScore),
     };
 }

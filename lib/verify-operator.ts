@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase';
 import type { PNode } from '@/types/pnode';
 
 export interface OperatorVerification {
@@ -17,7 +16,7 @@ export interface OperatorVerification {
 
 /**
  * Verifies if a wallet pubkey belongs to a registered pNode operator
- * by checking the pnodes table in Supabase
+ * by calling the server-side API route
  */
 export async function verifyNodeOperator(walletPubkey: string): Promise<OperatorVerification> {
     if (!walletPubkey) {
@@ -25,26 +24,13 @@ export async function verifyNodeOperator(walletPubkey: string): Promise<Operator
     }
 
     try {
-        const { data, error } = await supabase
-            .from('pnodes')
-            .select('pubkey, status, credits, credits_rank, location')
-            .eq('pubkey', walletPubkey)
-            .single();
+        const res = await fetch(`/api/verify-operator?pubkey=${encodeURIComponent(walletPubkey)}`);
 
-        if (error || !data) {
+        if (!res.ok) {
             return { isOperator: false };
         }
 
-        return {
-            isOperator: true,
-            node: {
-                pubkey: data.pubkey,
-                status: data.status,
-                credits: data.credits,
-                creditsRank: data.credits_rank,
-                location: data.location,
-            },
-        };
+        return await res.json();
     } catch (err) {
         console.error('Error verifying node operator:', err);
         return { isOperator: false };
