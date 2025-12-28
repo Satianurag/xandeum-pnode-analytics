@@ -13,7 +13,7 @@ import { Download, FileJson, FileSpreadsheet, FileText, ChevronDown } from 'luci
 import type { ExportFormat } from '@/lib/export-utils';
 
 interface ExportButtonProps {
-    onExport: (format: ExportFormat) => void;
+    onExport: (format: ExportFormat) => void | Promise<void>;
     disabled?: boolean;
     label?: string;
     className?: string;
@@ -30,10 +30,11 @@ export function ExportButton({
     const handleExport = async (format: ExportFormat) => {
         setIsExporting(true);
         try {
-            onExport(format);
+            await onExport(format);
+        } catch (error) {
+            console.error('Export failed:', error);
         } finally {
-            // Small delay to show feedback
-            setTimeout(() => setIsExporting(false), 500);
+            setIsExporting(false);
         }
     };
 

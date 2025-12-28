@@ -1,20 +1,16 @@
 /**
  * Data Export Utilities
- * Provides CSV, JSON, and PDF export functionality for dashboard data
+ * Provides secure and performant CSV, JSON, and PDF export functionality
+ * Dec 2025 Standard: Uses Web Workers for serialization and @react-pdf/renderer for PDFs
  */
 
-import type { PNode, NetworkStats, PerformanceHistory, StakingStats } from '@/types/pnode';
-
-// ============================================================
-// TYPE DEFINITIONS
-// ============================================================
+import { saveAs } from 'file-saver';
+import { pdf } from '@react-pdf/renderer';
+import { createElement } from 'react';
+import type { PNode, PerformanceHistory } from '@/types/pnode';
+import { ExportPDFDocument } from '@/components/dashboard/export-button/PDFDocument';
 
 export type ExportFormat = 'csv' | 'json' | 'pdf';
-
-interface ExportOptions {
-    filename: string;
-    format: ExportFormat;
-}
 
 interface ColumnDefinition<T> {
     key: keyof T | string;
@@ -23,188 +19,9 @@ interface ColumnDefinition<T> {
 }
 
 // ============================================================
-// CSV EXPORT
+// COLUMN DEFINITIONS
 // ============================================================
 
-/**
- * Escape CSV value - handles commas, quotes, and newlines
- */
-function escapeCSV(value: unknown): string {
-    if (value === null || value === undefined) return '';
-    const str = String(value);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-}
-
-/**
- * Get nested property value from object
- */
-function getNestedValue<T>(obj: T, path: string): unknown {
-    return path.split('.').reduce((acc: unknown, part) => {
-        if (acc && typeof acc === 'object' && part in acc) {
-            return (acc as Record<string, unknown>)[part];
-        }
-        return undefined;
-    }, obj);
-}
-
-/**
- * Export data array to CSV format
- */
-export function exportToCSV<T extends Record<string, unknown>>(
-    data: T[],
-    columns: ColumnDefinition<T>[],
-    options: ExportOptions
-): void {
-    // Build header row
-    const headers = columns.map(col => escapeCSV(col.header)).join(',');
-
-    // Build data rows
-    const rows = data.map(row => {
-        return columns.map(col => {
-            const value = getNestedValue(row, col.key as string);
-            const formatted = col.formatter ? col.formatter(value, row) : value;
-            return escapeCSV(formatted);
-        }).join(',');
-    });
-
-    const csvContent = [headers, ...rows].join('\n');
-    downloadFile(csvContent, `${options.filename}.csv`, 'text/csv;charset=utf-8;');
-}
-
-// ============================================================
-// JSON EXPORT
-// ============================================================
-
-/**
- * Export data to formatted JSON
- */
-export function exportToJSON<T>(
-    data: T[],
-    options: ExportOptions
-): void {
-    const jsonContent = JSON.stringify(data, null, 2);
-    downloadFile(jsonContent, `${options.filename}.json`, 'application/json');
-}
-
-// ============================================================
-// PDF EXPORT (Print-based)
-// ============================================================
-
-/**
- * Export data to PDF using browser print functionality
- */
-export function exportToPDF<T extends Record<string, unknown>>(
-    data: T[],
-    columns: ColumnDefinition<T>[],
-    options: ExportOptions & { title?: string }
-): void {
-    // Create a new window with printable content
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        alert('Please allow popups to export PDF');
-        return;
-    }
-
-    const tableRows = data.map(row => {
-        const cells = columns.map(col => {
-            const value = getNestedValue(row, col.key as string);
-            const formatted = col.formatter ? col.formatter(value, row) : String(value ?? '');
-            return `<td style="padding: 8px; border: 1px solid #333;">${formatted}</td>`;
-        }).join('');
-        return `<tr>${cells}</tr>`;
-    }).join('');
-
-    const tableHeaders = columns.map(col =>
-        `<th style="padding: 8px; border: 1px solid #333; background: #1a1a2e; color: #fff;">${col.header}</th>`
-    ).join('');
-
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${options.title || options.filename}</title>
-      <style>
-        body {
-          font-family: 'Roboto Mono', monospace;
-          background: #0f0f1a;
-          color: #e0e0e0;
-          padding: 20px;
-        }
-        h1 {
-          color: #8b5cf6;
-          margin-bottom: 20px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 12px;
-        }
-        .meta {
-          color: #888;
-          margin-bottom: 20px;
-          font-size: 12px;
-        }
-        @media print {
-          body { background: white; color: black; }
-          th { background: #f0f0f0 !important; color: black !important; }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>${options.title || 'Xandeum pNode Analytics Export'}</h1>
-      <div class="meta">
-        Generated: ${new Date().toLocaleString()}<br/>
-        Total Records: ${data.length}
-      </div>
-      <table>
-        <thead><tr>${tableHeaders}</tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-      <script>
-        window.onload = function() {
-          window.print();
-          window.onafterprint = function() { window.close(); };
-        };
-      </script>
-    </body>
-    </html>
-  `;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-}
-
-// ============================================================
-// FILE DOWNLOAD HELPER
-// ============================================================
-
-/**
- * Trigger file download in browser
- */
-function downloadFile(content: string, filename: string, mimeType: string): void {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-}
-
-// ============================================================
-// PNODE EXPORT CONFIGURATIONS
-// ============================================================
-
-/**
- * Column definitions for pNode data export
- */
 export const pNodeColumns: ColumnDefinition<PNode>[] = [
     { key: 'pubkey', header: 'Public Key' },
     { key: 'status', header: 'Status' },
@@ -225,33 +42,6 @@ export const pNodeColumns: ColumnDefinition<PNode>[] = [
     { key: 'creditsRank', header: 'Rank', formatter: (v) => v !== undefined ? String(v) : 'N/A' },
 ];
 
-/**
- * Export pNodes data
- */
-export function exportPNodes(
-    nodes: PNode[],
-    format: ExportFormat,
-    filename: string = 'xandeum-pnodes'
-): void {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const fullFilename = `${filename}-${timestamp}`;
-
-    switch (format) {
-        case 'csv':
-            exportToCSV(nodes as unknown as Record<string, unknown>[], pNodeColumns as unknown as ColumnDefinition<Record<string, unknown>>[], { filename: fullFilename, format });
-            break;
-        case 'json':
-            exportToJSON(nodes, { filename: fullFilename, format });
-            break;
-        case 'pdf':
-            exportToPDF(nodes as unknown as Record<string, unknown>[], pNodeColumns as unknown as ColumnDefinition<Record<string, unknown>>[], { filename: fullFilename, format, title: 'Xandeum pNodes Export' });
-            break;
-    }
-}
-
-/**
- * Column definitions for analytics/performance history
- */
 export const performanceHistoryColumns: ColumnDefinition<PerformanceHistory>[] = [
     { key: 'timestamp', header: 'Timestamp', formatter: (v) => new Date(String(v)).toLocaleString() },
     { key: 'totalNodes', header: 'Total Nodes' },
@@ -261,26 +51,144 @@ export const performanceHistoryColumns: ColumnDefinition<PerformanceHistory>[] =
     { key: 'gossipMessages', header: 'Gossip Messages', formatter: (v) => Number(v).toLocaleString() },
 ];
 
+// ============================================================
+// INTERNAL HELPERS
+// ============================================================
+
+function getNestedValue<T>(obj: T, path: string): unknown {
+    return path.split('.').reduce((acc: unknown, part) => {
+        if (acc && typeof acc === 'object' && part in acc) {
+            return (acc as Record<string, unknown>)[part];
+        }
+        return undefined;
+    }, obj);
+}
+
 /**
- * Export performance history data
+ * Pre-processes data by applying formatters.
+ * This ensures the Worker/PDF receives simple, flat string/number data.
  */
-export function exportPerformanceHistory(
-    history: PerformanceHistory[],
+function prepareDataForExport<T>(data: T[], columns: ColumnDefinition<T>[]) {
+    return data.map(row => {
+        const processedRow: Record<string, string | number | null> = {};
+        columns.forEach(col => {
+            const rawValue = getNestedValue(row, col.key as string);
+            const value = col.formatter
+                ? col.formatter(rawValue, row)
+                : (rawValue as string | number | null);
+            processedRow[col.key as string] = value;
+        });
+        return processedRow;
+    });
+}
+
+/**
+ * Handles CSV and JSON export using a Web Worker
+ */
+async function exportWithWorker(
+    data: any[],
+    columns: ColumnDefinition<any>[],
+    format: 'csv' | 'json',
+    filename: string
+) {
+    if (typeof Worker === 'undefined') {
+        alert('Web Workers are not supported in this browser.');
+        return;
+    }
+
+    const worker = new Worker(new URL('./workers/export.worker.ts', import.meta.url));
+
+    return new Promise<void>((resolve, reject) => {
+        worker.onmessage = (e) => {
+            const { type, result, error } = e.data;
+            if (type === 'success') {
+                const mimeType = format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json';
+                const blob = new Blob([result], { type: mimeType });
+                saveAs(blob, `${filename}.${format}`);
+                worker.terminate();
+                resolve();
+            } else {
+                worker.terminate();
+                reject(new Error(error || 'Export failed'));
+            }
+        };
+
+        worker.onerror = (err) => {
+            worker.terminate();
+            reject(err);
+        };
+
+        worker.postMessage({
+            type: format,
+            data: prepareDataForExport(data, columns),
+            columns: columns.map(c => ({ key: c.key as string, header: c.header })) // Strip functions
+        });
+    });
+}
+
+/**
+ * Handles PDF export using @react-pdf/renderer
+ */
+async function exportToPDF(
+    data: any[],
+    columns: ColumnDefinition<any>[],
+    filename: string,
+    title: string
+) {
+    const processedData = prepareDataForExport(data, columns);
+    // Remove complex keys for the PDF component props, it just needs key string
+    const simpleColumns = columns.map(c => ({ header: c.header, key: c.key as string }));
+
+    const doc = createElement(ExportPDFDocument, {
+        data: processedData,
+        columns: simpleColumns,
+        title
+    });
+
+    const blob = await pdf(doc).toBlob();
+    saveAs(blob, `${filename}.pdf`);
+}
+
+// ============================================================
+// EXPORT FUNCTIONS
+// ============================================================
+
+export async function exportPNodes(
+    nodes: PNode[],
     format: ExportFormat,
-    filename: string = 'xandeum-analytics'
-): void {
+    filename: string = 'xandeum-pnodes'
+): Promise<void> {
     const timestamp = new Date().toISOString().split('T')[0];
     const fullFilename = `${filename}-${timestamp}`;
 
-    switch (format) {
-        case 'csv':
-            exportToCSV(history as unknown as Record<string, unknown>[], performanceHistoryColumns as unknown as ColumnDefinition<Record<string, unknown>>[], { filename: fullFilename, format });
-            break;
-        case 'json':
-            exportToJSON(history, { filename: fullFilename, format });
-            break;
-        case 'pdf':
-            exportToPDF(history as unknown as Record<string, unknown>[], performanceHistoryColumns as unknown as ColumnDefinition<Record<string, unknown>>[], { filename: fullFilename, format, title: 'Xandeum Analytics Export' });
-            break;
+    try {
+        if (format === 'pdf') {
+            await exportToPDF(nodes, pNodeColumns, fullFilename, 'Xandeum pNodes Export');
+        } else {
+            await exportWithWorker(nodes, pNodeColumns, format, fullFilename);
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        throw error;
+    }
+}
+
+export async function exportPerformanceHistory(
+    history: PerformanceHistory[],
+    format: ExportFormat,
+    filename: string = 'xandeum-analytics'
+): Promise<void> {
+    const timestamp = new Date().toISOString().split('T')[0];
+    const fullFilename = `${filename}-${timestamp}`;
+
+    try {
+        if (format === 'pdf') {
+            await exportToPDF(history, performanceHistoryColumns, fullFilename, 'Xandeum Analytics Export');
+        } else {
+            await exportWithWorker(history, performanceHistoryColumns, format, fullFilename);
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        throw error;
     }
 }
