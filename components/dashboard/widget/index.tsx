@@ -11,9 +11,24 @@ export default function Widget() {
   const { time, timezone } = useLiveClock();
   const { data: stats } = useNetworkStats();
   const [mounted, setMounted] = React.useState(false);
+  const [showGif, setShowGif] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
+
+    // Defer GIF loading until after critical content is painted
+    // Using requestIdleCallback for better performance, with setTimeout fallback
+    const loadGif = () => setShowGif(true);
+
+    if ('requestIdleCallback' in window) {
+      // Load when browser is idle (best for performance)
+      const idleId = window.requestIdleCallback(loadGif, { timeout: 3000 });
+      return () => window.cancelIdleCallback(idleId);
+    } else {
+      // Fallback: load after 2 seconds
+      const timeoutId = setTimeout(loadGif, 2000);
+      return () => clearTimeout(timeoutId);
+    }
   }, []);
 
   const formatTime = (date: Date | null) => {
@@ -75,15 +90,17 @@ export default function Widget() {
         </div>
 
         <div className="absolute inset-0 -z-[1]">
-          <Image
-            src="/assets/pc_blueprint.gif"
-            alt=""
-            width={250}
-            height={250}
-            className="size-full object-contain"
-            priority
-            unoptimized
-          />
+          {showGif && (
+            <Image
+              src="/assets/pc_blueprint.gif"
+              alt=""
+              width={250}
+              height={250}
+              className="size-full object-contain animate-in fade-in duration-500"
+              loading="lazy"
+              unoptimized
+            />
+          )}
         </div>
       </CardContent>
     </Card>
