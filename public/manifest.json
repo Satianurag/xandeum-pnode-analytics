@@ -1,7 +1,7 @@
 {
-    "name": "Xandeum pNode Analytics",
-    "short_name": "pNode Analytics",
-    "description": "Real-time analytics dashboard for Xandeum pNodes - decentralized storage nodes on the Solana blockchain",
+    "name": "Xandeum pNode Dashboard",
+    "short_name": "pNode Dashboard",
+    "description": "Operational dashboard for Xandeum pNodes – monitor node inventory, performance, and network health on the Xandeum network",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f0f1a",
@@ -18,7 +18,7 @@
             "sizes": "1200x630",
             "type": "image/png",
             "form_factor": "wide",
-            "label": "Xandeum pNode Analytics Dashboard"
+            "label": "Xandeum pNode Dashboard"
         }
     ],
     "related_applications": [],

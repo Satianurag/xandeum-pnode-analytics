@@ -17,7 +17,7 @@ const latencyCache = new Map<string, { latency: number; timestamp: number }>();
 export async function fetchPodCredits(): Promise<PodCreditsResponse | null> {
     try {
         // We do not cache this here for long; we want fresh data during ingestion.
-        const response = await fetch(POD_CREDITS_API, { next: { revalidate: 60 } });
+        const response = await fetch(POD_CREDITS_API, { cache: 'no-store' });
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
@@ -373,12 +373,14 @@ export async function ingestNodeData() {
             await redis.set(CACHE_KEYS.NETWORK_STATS, JSON.stringify(statsData), { ex: CACHE_TTL.PNODES });
 
             // Self-Healing: Check for corruption and sanitize if needed
-            const currentHistory = await redis.lrange(CACHE_KEYS.NETWORK_HISTORY, 0, -1);
+            const currentHistory = await redis.lrange<string>(CACHE_KEYS.NETWORK_HISTORY, 0, -1);
             if (currentHistory && currentHistory.length > 0) {
-                const cleanHistory = currentHistory.filter(item => {
+                const cleanHistory = currentHistory.filter((item): item is string => {
                     try {
                         return typeof item === 'string' && !item.includes('[object Object]') && JSON.parse(item);
-                    } catch { return false; }
+                    } catch {
+                        return false;
+                    }
                 });
 
                 if (cleanHistory.length < currentHistory.length) {

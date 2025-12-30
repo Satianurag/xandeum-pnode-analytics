@@ -166,7 +166,7 @@ export function DashboardSidebar({
         </div>
         <div className="grid flex-1 text-left text-sm leading-tight">
           <span className="text-2xl font-display">XANDEUM</span>
-          <span className="text-xs uppercase tracking-wider opacity-70">pNode Analytics</span>
+          <span className="text-xs uppercase tracking-wider opacity-70">pNode Dashboard</span>
         </div>
       </SidebarHeader>
 

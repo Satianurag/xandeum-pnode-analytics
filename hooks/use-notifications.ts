@@ -24,7 +24,7 @@ function getDefaultNotifications(): Notification[] {
     return [
         {
             id: 'default-1',
-            title: 'Welcome to pNode Analytics',
+            title: 'Welcome to the Xandeum pNode Dashboard',
             message: 'Real-time monitoring is now active. Data refreshes every 5 minutes.',
             type: 'info',
             priority: 'low',

@@ -64,11 +64,11 @@ const nextConfig: NextConfig = {
   // ═══════════════════════════════════════════════════════════════════════════
   experimental: {
     // CSS optimization - reduces render-blocking CSS
-    optimizeCss: true,
+    optimizeCss: false,
 
     // View Transitions API - GPU-accelerated page transitions
     // Provides native app-like navigation experience
-    viewTransition: true,
+    viewTransition: false,
   },
 
   // Webpack fallback for production (client-side polyfills)

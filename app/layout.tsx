@@ -47,11 +47,11 @@ const isV0 = process.env["VERCEL_URL"]?.includes("vusercontent.net") ?? false;
 
 export const metadata: Metadata = {
   title: {
-    template: "%s – Xandeum pNode Analytics",
-    default: "Xandeum pNode Analytics",
+    template: "%s – Xandeum pNode Dashboard",
+    default: "Xandeum pNode Dashboard",
   },
   description:
-    "Analytics platform for Xandeum pNodes. Monitor, analyze, and track pNode performance on the Xandeum network.",
+    "Operational dashboard for Xandeum pNodes. Monitor node inventory, performance, and network health on the Xandeum network.",
   generator: 'Xandeum Labs',
   metadataBase: new URL('http://localhost:5000'),
 };
@@ -77,7 +77,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#8b5cf6" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="pNode Analytics" />
+        <meta name="apple-mobile-web-app-title" content="pNode Dashboard" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
 
         {/* Font optimization handled by next/font/local */}

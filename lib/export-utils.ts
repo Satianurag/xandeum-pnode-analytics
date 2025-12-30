@@ -176,14 +176,14 @@ export async function exportPNodes(
 export async function exportPerformanceHistory(
     history: PerformanceHistory[],
     format: ExportFormat,
-    filename: string = 'xandeum-analytics'
+    filename: string = 'xandeum-network-metrics'
 ): Promise<void> {
     const timestamp = new Date().toISOString().split('T')[0];
     const fullFilename = `${filename}-${timestamp}`;
 
     try {
         if (format === 'pdf') {
-            await exportToPDF(history, performanceHistoryColumns, fullFilename, 'Xandeum Analytics Export');
+            await exportToPDF(history, performanceHistoryColumns, fullFilename, 'Xandeum Network Metrics Export');
         } else {
             await exportWithWorker(history, performanceHistoryColumns, format, fullFilename);
         }

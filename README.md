@@ -1,120 +1,124 @@
-# Xandeum pNode Analytics
+# Xandeum pNode Dashboard
 
-![License](https://img.shields.io/badge/license-Private-red.svg)
-![Next.js](https://img.shields.io/badge/Next.js-16.1-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38bdf8)
+This repository contains a Next.js-based dashboard for monitoring Xandeum pNodes.
 
-Analytics platform for Xandeum pNodes. Monitor, analyze, and track pNode performance, decentralization metrics, and network health on the Xandeum network.
+The application focuses on operational visibility: node inventory, health, performance, decentralization metrics, and network status. It is designed to be deployable as an internal or operator-facing tool rather than a public marketing site.
 
-## 🚀 Features
+## Core Capabilities
 
-*   **Real-time Analytics**: Comprehensive dashboard for monitoring pNode performance and network statistics.
-*   **Interactive Visualizations**: Dynamic charts and graphs powered by Recharts and Framer Motion.
-*   **Global Node Map**: Geographic distribution of nodes visualized using Leaflet.
-*   **Wallet Integration**: Seamless Solana wallet connection for user interactions.
-*   **Community Chat**: Integrated chat system with mobile support.
-*   **Responsive Design**: Fully responsive layout optimized for both desktop and mobile devices.
-*   **Dark Mode**: Sleek dark-themed UI built with Tailwind CSS and Shadcn UI.
+- **pNode overview**  
+  Cluster-wide list of pNodes with key attributes and status.
 
-## 🛠 Tech Stack
+- **Network & performance views**  
+  Pages focused on network-level statistics, latency/throughput indicators, and historical performance.
 
-*   **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
-*   **Language**: [TypeScript](https://www.typescriptlang.org/)
-*   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-*   **UI Components**: [shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/)
-*   **State Management**: [Zustand](https://github.com/pmndrs/zustand), [TanStack Query](https://tanstack.com/query/latest)
-*   **Backend & Data**: [Supabase](https://supabase.com/), [xandeum-prpc](https://www.npmjs.com/package/xandeum-prpc)
-*   **Animations**: [Framer Motion](https://www.framer.com/motion/)
-*   **Icons**: [Lucide React](https://lucide.dev/)
+- **Health & alerts**  
+  Dedicated views for health signals and alert-style information useful for day‑to‑day operations.
 
-## 🏁 Getting Started
+- **Operator UX**  
+  Responsive layout, keyboard- and mouse-friendly UI, dark theme, and a right‑hand sidebar with widgets, notifications, and chat.
 
-### Prerequisites
+## Technology Stack
 
-*   Node.js 20+
-*   npm
+- **Framework**: Next.js (App Router) with React and server components where appropriate
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS and utility classes
+- **UI Components**: shadcn/ui and Radix primitives
+- **Data & State**:
+  - Custom React hooks under `hooks/` for pNode data, network stats, etc.
+  - TanStack Query for data fetching, caching, and background refresh
+- **Backend & Integrations**:
+  - pRPC client for accessing Xandeum network data
+  - Supabase and Redis-backed caching (for notifications and other dashboard state)
 
-### Installation
+## Requirements
 
-1.  **Clone the repository**
-    ```bash
-    git clone <repository-url>
-    cd xandeum-pnode-analytics
-    ```
+- Node.js 20 or newer
+- npm (or another compatible package manager)
 
-2.  **Install dependencies**
-    ```bash
-    npm install
-    ```
+## Getting Started
 
-3.  **Environment Setup**
-    Copy the example environment file:
-    ```bash
-    cp .env.local.example .env.local
-    ```
-    
-    Fill in the required environment variables in `.env.local`:
-    ```env
-    # Supabase Configuration
-    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+1. **Clone the repository**
 
-    # Data Refresh Configuration
-    DATA_REFRESH_INTERVAL_MS=300000
+   ```bash
+   git clone <repository-url>
+   cd xandeum-pnode-analytics
+   ```
 
-    # Pod Credits API
-    POD_CREDITS_API_URL=https://podcredits.xandeum.network/api/pods-credits
+2. **Install dependencies**
 
-    # Xandeum RPC (Optional)
-    XANDEUM_DEVNET_RPC=https://api.devnet.xandeum.com:8899
+   ```bash
+   npm install
+   ```
 
-    # Geolocation API
-    GEOLOCATION_API_URL=http://ip-api.com/batch
-    ```
+3. **Configure environment**
 
-4.  **Run the development server**
-    ```bash
-    npm run dev
-    ```
-    Open [http://localhost:5000](http://localhost:5000) with your browser to see the result.
+   Copy the example environment file and adjust values as needed:
 
-## 📜 Scripts
+   ```bash
+   cp .env.local.example .env.local
+   ```
 
-*   `npm run dev`: Runs the development server on port 5000.
-*   `npm run build`: Builds the application for production.
-*   `npm run start`: Starts the production server.
-*   `npm run lint`: Runs ESLint to check for code quality issues.
+   Key variables (see `.env.local.example` for the full list):
 
-## 📦 Deployment
+   ```env
+   # Supabase configuration
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-For detailed deployment instructions, please refer to [DEPLOYMENT.md](./DEPLOYMENT.md).
+   # Data refresh configuration (in milliseconds)
+   DATA_REFRESH_INTERVAL_MS=300000
 
-The project is optimized for deployment on Vercel but can also be hosted via Docker or PM2.
+   # Pod credits API
+   POD_CREDITS_API_URL=https://podcredits.xandeum.network/api/pods-credits
 
-### Vercel (Recommended)
+   # Optional Xandeum RPC endpoint
+   XANDEUM_DEVNET_RPC=https://api.devnet.xandeum.com:8899
 
-1.  Push your code to a Git repository.
-2.  Import the project into Vercel.
-3.  Add the environment variables from `.env.local`.
-4.  Deploy.
+   # Geolocation API used for node location enrichment
+   GEOLOCATION_API_URL=http://ip-api.com/batch
+   ```
 
-## 📂 Project Structure
+4. **Run the development server**
 
-```
-├── app/                  # Next.js App Router pages and layouts
-├── components/           # Reusable UI components
-│   ├── ui/               # Shadcn UI primitives
-│   ├── dashboard/        # Dashboard-specific components
-│   └── chat/             # Chat feature components
-├── contexts/             # React Context providers (Wallet, etc.)
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility functions and configurations
-├── public/               # Static assets (fonts, images)
+   ```bash
+   npm run dev
+   ```
+
+   By default the app listens on [http://localhost:5000](http://localhost:5000).
+
+## Useful Scripts
+
+- `npm run dev` – Start the development server
+- `npm run build` – Create an optimized production build
+- `npm run start` – Run the production server
+- `npm run lint` – Run the configured ESLint rules
+
+## Project Layout
+
+High‑level layout (non‑exhaustive):
+
+```text
+├── app/                  # Next.js routes (App Router)
+│   ├── page.tsx          # Main dashboard entry
+│   ├── pnodes/           # pNode views (list, details)
+│   ├── performance/      # Performance‑focused views
+│   ├── network/          # Network‑level metrics
+│   ├── health/           # Health views
+│   └── alerts/           # Alerts and notifications pages
+├── components/           # Reusable UI and dashboard components
+├── contexts/             # React context providers (e.g., wallet, layout)
+├── hooks/                # Custom hooks for data fetching and UI behavior
+├── lib/                  # Shared utilities, API clients, configuration
+├── public/               # Static assets
 ├── styles/               # Global styles
 └── types/                # TypeScript type definitions
 ```
 
-## 📄 License
+## Deployment
 
-This project is private and proprietary.
+The project targets modern Node-based hosting platforms (Vercel, containerized environments, or traditional Node process managers). A separate `DEPLOYMENT.md` file contains more specific guidance for production deployments.
+
+## License
+
+This codebase is private and proprietary unless otherwise stated in a separate license file or agreement.

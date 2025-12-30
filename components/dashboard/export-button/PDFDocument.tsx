@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 // Register a nice font if possible, or use standard ones
 // Font.register({ family: 'Roboto', src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf' });
@@ -113,9 +113,13 @@ export const ExportPDFDocument = ({ data, columns, title = 'Data Export' }: Expo
                 ))}
             </View>
 
-            <Text style={styles.footer} render={({ pageNumber, totalPages }) => (
-                `Page ${pageNumber} of ${totalPages} - Xandeum pNode Analytics`
-            )} fixed />
+            <Text
+                style={styles.footer}
+                render={(
+                    { pageNumber, totalPages }: { pageNumber: number; totalPages: number }
+                ) => `Page ${pageNumber} of ${totalPages} - Xandeum pNode Dashboard`}
+                fixed
+            />
         </Page>
     </Document>
 );
