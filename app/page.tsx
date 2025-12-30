@@ -1,7 +1,7 @@
 import DashboardOverview from "./dashboard-client";
 
-// Allow static optimization or default dynamic behavior (non-blocking)
-// export const dynamic = 'force-dynamic'; // Removed to prevent blocking SSR
+// Force static generation for instant initial load (Next.js 16 best practice)
+export const dynamic = 'force-static';
 
 export default function Page() {
     // Directly render the client component. 
