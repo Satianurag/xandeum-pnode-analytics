@@ -3,6 +3,19 @@ import { PNode, NetworkStats, PerformanceHistory, GossipHealth, GossipEvent, Sto
 import React, { useEffect, useState } from 'react';
 import { REFRESH_INTERVAL } from '@/lib/pnode-api';
 
+// ============================================================================
+// BASE QUERY CONFIGURATION - Prevents shell loading on tab switch
+// ============================================================================
+// CRITICAL: These options ensure cached data is used immediately on navigation
+// instead of showing loading skeletons while refetching.
+const BASE_QUERY_OPTIONS = {
+    refetchOnMount: false,      // CRITICAL: Prevents refetch on tab switch
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000,   // 5 minutes - data considered fresh
+    gcTime: 10 * 60 * 1000,     // 10 minutes - keep in cache longer
+} as const;
+
 // Generic fetcher for unified API with priority support
 async function fetchApi<T>(params: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`/api/pnode-data?${params}`, init);
@@ -17,8 +30,8 @@ export function usePNodes(initialData?: any) {
         queryKey: ['pnodes'],
         queryFn: () => fetchApi<PNode[]>('type=cluster-nodes', { priority: 'high' } as RequestInit),
         initialData,
-        staleTime: Infinity, // Never stale (instant load from cache)
-        refetchOnWindowFocus: false,
+        ...BASE_QUERY_OPTIONS,
+        staleTime: Infinity, // Never stale - priority data
     });
 }
 
@@ -27,8 +40,8 @@ export function useNetworkStats(initialData?: any) {
         queryKey: ['network-stats'],
         queryFn: () => fetchApi<NetworkStats>('type=network-stats', { priority: 'high' } as RequestInit),
         initialData,
-        staleTime: Infinity,
-        refetchOnWindowFocus: false,
+        ...BASE_QUERY_OPTIONS,
+        staleTime: Infinity, // Never stale - priority data
     });
 }
 
@@ -37,6 +50,7 @@ export function usePerformanceHistory(period: '24h' | '7d' | '30d' = '24h', init
         queryKey: ['performance-history', period],
         queryFn: () => fetchApi<PerformanceHistory[]>(`type=performance-history&period=${period}`),
         initialData,
+        ...BASE_QUERY_OPTIONS,
         staleTime: 2 * 60 * 1000,
         refetchInterval: REFRESH_INTERVAL,
     });
@@ -46,6 +60,7 @@ export function useGossipEvents() {
     return useQuery({
         queryKey: ['gossip-events'],
         queryFn: () => fetchApi<GossipEvent[]>('type=network-events'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: 60000,
     });
 }
@@ -54,6 +69,7 @@ export function useGossipHealth() {
     return useQuery({
         queryKey: ['gossip-health'],
         queryFn: () => fetchApi<GossipHealth>('type=gossip-health'),
+        ...BASE_QUERY_OPTIONS,
         staleTime: 60000,
         refetchInterval: REFRESH_INTERVAL,
     });
@@ -63,6 +79,7 @@ export function useStorageDistribution() {
     return useQuery({
         queryKey: ['storage-distribution'],
         queryFn: () => fetchApi<StorageDistribution[]>('type=storage-distribution'),
+        ...BASE_QUERY_OPTIONS,
         staleTime: 60000,
         refetchInterval: REFRESH_INTERVAL,
     });
@@ -72,6 +89,7 @@ export function useXScore(nodeId?: string) {
     return useQuery({
         queryKey: ['x-score', nodeId],
         queryFn: () => fetchApi<XScore>(`type=x-score${nodeId ? `&nodeId=${nodeId}` : ''}`),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -80,8 +98,8 @@ export function useEpochInfo() {
     return useQuery({
         queryKey: ['epoch-info'],
         queryFn: () => fetchApi<EpochInfo>('type=epoch-info'),
+        ...BASE_QUERY_OPTIONS,
         staleTime: Infinity,
-        refetchOnWindowFocus: false,
     });
 }
 
@@ -89,6 +107,7 @@ export function useEpochHistory() {
     return useQuery({
         queryKey: ['epoch-history'],
         queryFn: () => fetchApi<EpochHistory[]>('type=epoch-history'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -97,6 +116,7 @@ export function useStakingStats() {
     return useQuery({
         queryKey: ['staking-stats'],
         queryFn: () => fetchApi<StakingStats>('type=staking-stats'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -105,6 +125,7 @@ export function useDecentralizationMetrics() {
     return useQuery({
         queryKey: ['decentralization-metrics'],
         queryFn: () => fetchApi<DecentralizationMetrics>('type=decentralization-metrics'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -113,6 +134,7 @@ export function useVersionDistribution() {
     return useQuery({
         queryKey: ['version-distribution'],
         queryFn: () => fetchApi<VersionInfo[]>('type=version-distribution'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -121,6 +143,7 @@ export function useHealthScoreBreakdown() {
     return useQuery({
         queryKey: ['health-score-breakdown'],
         queryFn: () => fetchApi<HealthScoreBreakdown>('type=health-score-breakdown'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -129,6 +152,7 @@ export function useTrendData(metric: string, period: string) {
     return useQuery({
         queryKey: ['trend-data', metric, period],
         queryFn: () => fetchApi<TrendData>(`type=trend-data&metric=${metric}&period=${period}`),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -137,6 +161,7 @@ export function useExabyteProjection(timeframe: string, customNodeCount?: number
     return useQuery({
         queryKey: ['exabyte-projection', timeframe, customNodeCount],
         queryFn: () => fetchApi<ExabyteProjection>(`type=exabyte-projection&timeframe=${timeframe}${customNodeCount ? `&customNodeCount=${customNodeCount}` : ''}`),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -145,6 +170,7 @@ export function useCommissionHistory(nodeId: string) {
     return useQuery({
         queryKey: ['commission-history', nodeId],
         queryFn: () => fetchApi<CommissionHistory>(`type=commission-history&nodeId=${nodeId}`),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -157,6 +183,7 @@ export function useHealthTrends(period: string = '24h') {
             if (!res.ok) throw new Error('Failed to fetch health trends');
             return res.json();
         },
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -165,6 +192,7 @@ export function useSlashingEvents() {
     return useQuery({
         queryKey: ['slashing-events'],
         queryFn: () => fetchApi<any[]>('type=slashing-events'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -173,6 +201,7 @@ export function usePeerRankings() {
     return useQuery({
         queryKey: ['peer-rankings'],
         queryFn: () => fetchApi<PeerRanking[]>('type=peer-rankings'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -181,6 +210,7 @@ export function useSuperminorityInfo() {
     return useQuery({
         queryKey: ['superminority-info'],
         queryFn: () => fetchApi<SuperminorityInfo>('type=superminority-info'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
@@ -189,6 +219,7 @@ export function useCensorshipResistanceScore() {
     return useQuery({
         queryKey: ['censorship-resistance-score'],
         queryFn: () => fetchApi<CensorshipResistanceScore>('type=censorship-resistance'),
+        ...BASE_QUERY_OPTIONS,
         refetchInterval: REFRESH_INTERVAL,
     });
 }
