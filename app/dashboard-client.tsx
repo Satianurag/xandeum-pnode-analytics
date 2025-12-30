@@ -48,8 +48,8 @@ export default function DashboardOverview({
   initialNodes,
   initialStats
 }: {
-  initialNodes: any[] | null;
-  initialStats: any | null;
+  initialNodes?: any[] | null;
+  initialStats?: any | null;
 }) {
   const { data: nodes, isLoading: nodesLoading, dataUpdatedAt } = usePNodes(initialNodes);
   const { data: stats, isLoading: statsLoading } = useNetworkStats(initialStats);

@@ -37,9 +37,9 @@ export default function AnalyticsPage({
   initialStats,
   initialHistory
 }: {
-  initialNodes: any[] | null;
-  initialStats: any | null;
-  initialHistory: any[] | null;
+  initialNodes?: any[] | null;
+  initialStats?: any | null;
+  initialHistory?: any[] | null;
 }) {
   const [period, setPeriod] = useState<'24h' | '7d' | '30d'>('24h');
   const { data: nodes, isLoading: nodesLoading, dataUpdatedAt } = usePNodes(initialNodes);

@@ -42,7 +42,7 @@ function StatusBadge({ status }: { status: PNode['status'] }) {
   );
 }
 
-export default function PNodesPage({ initialNodes }: { initialNodes: PNode[] | null }) {
+export default function PNodesPage({ initialNodes }: { initialNodes?: PNode[] | null }) {
   const { data: nodes, isLoading } = usePNodes(initialNodes);
 
   const [searchQuery, setSearchQuery] = useState('');

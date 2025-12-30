@@ -64,8 +64,8 @@ const chartConfig = {
 import { StatCard } from "@/components/dashboard/stat-card";
 
 interface PerformanceClientProps {
-    initialNodes: PNode[] | null;
-    initialHistory: PerformanceHistory[] | null;
+    initialNodes?: PNode[] | null;
+    initialHistory?: PerformanceHistory[] | null;
 }
 
 export default function PerformanceClient({ initialNodes, initialHistory }: PerformanceClientProps) {
