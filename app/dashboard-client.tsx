@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardPageLayout from "@/components/dashboard/layout";
 import { Bullet } from "@/components/ui/bullet";
 import BracketsIcon from "@/components/icons/brackets";
@@ -11,7 +11,7 @@ import TrophyIcon from "@/components/icons/trophy";
 import ServerIcon from "@/components/icons/server";
 import AtomIcon from "@/components/icons/atom";
 import GlobeIcon from "@/components/icons/globe";
-import { usePNodes, useNetworkStats, usePerformanceHistory, useGossipEvents, useXScore } from "@/hooks/use-pnode-data-query";
+import { usePNodes, useNetworkStats, usePerformanceHistory, useXScore } from "@/hooks/use-pnode-data-query";
 import DashboardStat from "@/components/dashboard/stat";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { InfoTooltip } from "@/components/dashboard/info-tooltip";
@@ -25,9 +25,7 @@ const NetworkChart = dynamic(() => import("@/components/dashboard/network-chart"
   loading: () => <Skeleton className="h-64 rounded-lg bg-accent/20" />
 });
 
-const LiveNetworkPulse = dynamic(() => import("@/components/dashboard/live-pulse").then(mod => mod.LiveNetworkPulse), {
-  ssr: false
-});
+
 
 
 function LoadingState() {
@@ -54,7 +52,6 @@ export default function DashboardOverview({
   const { data: nodes, isLoading: nodesLoading, dataUpdatedAt } = usePNodes(initialNodes);
   const { data: stats, isLoading: statsLoading } = useNetworkStats(initialStats);
   const { data: history, isLoading: historyLoading } = usePerformanceHistory();
-  const { data: gossipEvents } = useGossipEvents();
   const { data: xScore } = useXScore();
 
   const [mounted, setMounted] = useState(false);
@@ -175,7 +172,6 @@ export default function DashboardOverview({
       </StatCard>
 
       {/* Top Performing pNodes removed as requested */}
-      <LiveNetworkPulse />
     </DashboardPageLayout>
   );
 }

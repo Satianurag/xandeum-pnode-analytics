@@ -5,46 +5,56 @@ import type { Notification } from '@/types/dashboard';
 // Helper for safe JSON parsing (Upstash auto-parses)
 function safeParseNotifications(data: any): Notification[] {
     if (Array.isArray(data)) return data;
-    if (typeof data === 'string') return JSON.parse(data);
+    if (typeof data === 'string') {
+        try {
+            return JSON.parse(data);
+        } catch {
+            return [];
+        }
+    }
     return [];
+}
+
+// Default notifications for fallback
+function getDefaultNotifications(): Notification[] {
+    return [
+        {
+            id: 'default-1',
+            title: 'Welcome to the Xandeum pNode Dashboard',
+            message: 'Real-time monitoring is now active. Data refreshes every 5 minutes.',
+            type: 'info',
+            priority: 'low',
+            read: false,
+            timestamp: new Date().toISOString(),
+        },
+        {
+            id: 'default-2',
+            title: 'Network Connected',
+            message: 'Successfully connected to Xandeum network via pRPC.',
+            type: 'success',
+            priority: 'low',
+            read: true,
+            timestamp: new Date(Date.now() - 3600 * 1000).toISOString(),
+        },
+    ];
 }
 
 // GET - fetch notifications
 export async function GET() {
     try {
         const cached = await redis.get(CACHE_KEYS.NOTIFICATIONS);
+        const notifications = safeParseNotifications(cached);
 
-        if (cached) {
-            const notifications = safeParseNotifications(cached);
+        if (notifications.length > 0) {
             return NextResponse.json(notifications);
         }
 
-        // Return default notifications if none exist
-        const defaults: Notification[] = [
-            {
-                id: 'default-1',
-                title: 'Welcome to the Xandeum pNode Dashboard',
-                message: 'Real-time monitoring is now active. Data refreshes every 5 minutes.',
-                type: 'info',
-                priority: 'low',
-                read: false,
-                timestamp: new Date().toISOString(),
-            },
-            {
-                id: 'default-2',
-                title: 'Network Connected',
-                message: 'Successfully connected to Xandeum network via pRPC.',
-                type: 'success',
-                priority: 'low',
-                read: true,
-                timestamp: new Date(Date.now() - 3600 * 1000).toISOString(),
-            },
-        ];
-
-        return NextResponse.json(defaults);
+        // Return default notifications if none exist or cache is empty
+        return NextResponse.json(getDefaultNotifications());
     } catch (err) {
         console.error('GET notifications error:', err);
-        return NextResponse.json([], { status: 500 });
+        // Return defaults on error instead of empty array
+        return NextResponse.json(getDefaultNotifications());
     }
 }
 
