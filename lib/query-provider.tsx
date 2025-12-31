@@ -13,7 +13,7 @@ function makeQueryClient() {
                 gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep data in memory for session
                 refetchOnWindowFocus: false, // Disable background refetching for instant feel
                 refetchOnReconnect: true, // Refetch on network reconnect
-                refetchOnMount: false, // Trust cached data on navigation
+                refetchOnMount: true, // Fetch on mount when cache is empty (was 'false' causing bugs)
                 retry: 2, // Retry failed requests twice
                 retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
             },

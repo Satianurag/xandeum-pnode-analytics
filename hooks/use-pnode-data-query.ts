@@ -9,9 +9,11 @@ import { REFRESH_INTERVAL } from '@/lib/pnode-api';
 // CRITICAL: These options ensure cached data is used immediately on navigation
 // instead of showing loading skeletons while refetching.
 const BASE_QUERY_OPTIONS = {
-    refetchOnMount: false,      // CRITICAL: Prevents refetch on tab switch
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    // NOTE: 'always' means it will fetch on mount if no data exists, but use cache if data exists
+    // This was previously 'false' which broke initial data loading when cache was empty
+    refetchOnMount: true,       // Fetch on mount when cache is empty
+    refetchOnWindowFocus: false, // Don't refetch on tab focus (prevents flash)
+    refetchOnReconnect: true,   // Refetch on network reconnect
     staleTime: 5 * 60 * 1000,   // 5 minutes - data considered fresh
     gcTime: 10 * 60 * 1000,     // 10 minutes - keep in cache longer
 } as const;
@@ -31,7 +33,8 @@ export function usePNodes(initialData?: any) {
         queryFn: () => fetchApi<PNode[]>('type=cluster-nodes', { priority: 'high' } as RequestInit),
         initialData,
         ...BASE_QUERY_OPTIONS,
-        staleTime: Infinity, // Never stale - priority data
+        staleTime: 60000, // 1 minute - data refresh
+        refetchInterval: REFRESH_INTERVAL, // Periodic updates
     });
 }
 
@@ -41,7 +44,8 @@ export function useNetworkStats(initialData?: any) {
         queryFn: () => fetchApi<NetworkStats>('type=network-stats', { priority: 'high' } as RequestInit),
         initialData,
         ...BASE_QUERY_OPTIONS,
-        staleTime: Infinity, // Never stale - priority data
+        staleTime: 60000, // 1 minute - data refresh  
+        refetchInterval: REFRESH_INTERVAL, // Periodic updates
     });
 }
 
